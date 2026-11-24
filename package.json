@@ -1,0 +1,50 @@
+{
+  "name": "tankmc",
+  "version": "0.1.0",
+  "description": "TANKmc Minecraft Launcher",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "tsc -p electron && concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "tsc -p electron && tsc --noEmit && vite build",
+    "dist": "npm run build && electron-builder --win portable --publish never",
+    "typecheck": "tsc -p electron --noEmit && tsc --noEmit"
+  },
+  "build": {
+    "appId": "com.tankmc.launcher",
+    "productName": "TANKmc",
+    "files": [
+      "dist/**",
+      "dist-electron/**"
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "directories": {
+      "output": "release"
+    },
+    "portable": {
+      "artifactName": "TANKmc-Portable-${version}.exe"
+    }
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "wait-on": "^8.0.0"
+  },
+  "private": true,
+  "license": "MIT",
+  "author": "TANKmc"
+}
