@@ -16,11 +16,12 @@ jobs:
         with:
           node-version: 20
           cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
-      - name: Etiket ile package.json sürümü eşleşiyor mu?
+      - name: Sürümü etiketten al (v0.0.2 -> 0.0.2)
         shell: bash
         run: |
-          v="v$(node -p "require('./package.json').version")"
-          if [ "$v" != "$GITHUB_REF_NAME" ]; then echo "Etiket $GITHUB_REF_NAME ama package.json sürümü $v"; exit 1; fi
+          v="${GITHUB_REF_NAME#v}"
+          echo "$v" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$' || { echo "Geçersiz etiket: $GITHUB_REF_NAME (örnek: v0.1.0)"; exit 1; }
+          npm version "$v" --no-git-tag-version --allow-same-version
       - name: Bağımlılıklar
         shell: bash
         run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
