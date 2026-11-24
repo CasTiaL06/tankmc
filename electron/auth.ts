@@ -60,13 +60,14 @@ export async function login(onCode: (c: { userCode: string; url: string }) => vo
 }
 export const cancelLogin = () => { cancelled = true }
 
-export async function restore(): Promise<PublicUser | null> {
-  try {
-    if (!CLIENT_ID || !fs.existsSync(file())) return null
-    const s: Session = JSON.parse(safeStorage.decryptString(fs.readFileSync(file())))
-    if (s.mcExpires > Date.now() + 60000) { cur = s; return pub(s) }
-    return await finish(await form(MS + '/token', { grant_type: 'refresh_token', client_id: CLIENT_ID, refresh_token: s.refresh, scope: SCOPE }))
-  } catch { return null }
+export async function restore(): Promise<{ user: PublicUser | null; notice?: string }> {
+  if (!CLIENT_ID || !fs.existsSync(file())) return { user: null }
+  let s: Session
+  try { s = JSON.parse(safeStorage.decryptString(fs.readFileSync(file()))) }
+  catch { return { user: null, notice: 'Kayıtlı oturum bu bilgisayarda açılamadı (oturum Windows hesabına bağlı şifrelenir). Lütfen Microsoft ile yeniden giriş yapın.' } }
+  if (s.mcExpires > Date.now() + 60000) { cur = s; return { user: pub(s) } }
+  try { return { user: await finish(await form(MS + '/token', { grant_type: 'refresh_token', client_id: CLIENT_ID, refresh_token: s.refresh, scope: SCOPE })) } }
+  catch { return { user: null } }
 }
 export function logout() { cur = null; try { fs.rmSync(file(), { force: true }) } catch { /* yok say */ } }
 export const getSession = () => cur // Aşama 4'te oyun başlatma buradan token alacak

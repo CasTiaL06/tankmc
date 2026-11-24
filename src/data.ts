@@ -11,8 +11,8 @@ export const PACKS: Pack[] = [
   { id: 6, n: 'Çöl İmparatorluğu', l: 'Fabric', v: '1.21.4', m: 29, c: 'Hayatta Kalma', d: 'Kum fırtınaları, vahalar ve antik harabeler.', s: 6, k: 'desert', f: false },
 ]
 export const SERVERS: Server[] = [
-  { id: 11, n: 'TANK Survival', ip: 'play.tankmc.example', d: 'Hayatta kalma ve ekonomi sunucusu.', p: 128, mx: 300, v: '1.21.4', k: 'grass', on: true },
-  { id: 12, n: 'TANK SkyBlock', ip: 'sky.tankmc.example', d: 'Adada başla, imparatorluk kur.', p: 64, mx: 200, v: '1.20.1', k: 'end', on: true },
-  { id: 13, n: 'TANK PvP', ip: 'pvp.tankmc.example', d: 'Rekabetçi arenalar ve sıralama.', p: 212, mx: 400, v: '1.8.9', k: 'nether', on: true },
-  { id: 14, n: 'TANK Creative', ip: 'build.tankmc.example', d: 'Sınırsız yaratıcılık, dev plotlar.', p: 0, mx: 100, v: '1.21.4', k: 'desert', on: false },
+  { id: 11, n: 'TANK Survival', ip: 'play.tankclient.example', d: 'Hayatta kalma ve ekonomi sunucusu.', p: 128, mx: 300, v: '1.21.4', k: 'grass', on: true },
+  { id: 12, n: 'TANK SkyBlock', ip: 'sky.tankclient.example', d: 'Adada başla, imparatorluk kur.', p: 64, mx: 200, v: '1.20.1', k: 'end', on: true },
+  { id: 13, n: 'TANK PvP', ip: 'pvp.tankclient.example', d: 'Rekabetçi arenalar ve sıralama.', p: 212, mx: 400, v: '1.8.9', k: 'nether', on: true },
+  { id: 14, n: 'TANK Creative', ip: 'build.tankclient.example', d: 'Sınırsız yaratıcılık, dev plotlar.', p: 0, mx: 100, v: '1.21.4', k: 'desert', on: false },
 ]

@@ -5,7 +5,7 @@ export default function Account({ toast }: { toast: (m: string) => void }) {
   const [code, setCode] = useState<{ userCode: string; url: string } | null>(null)
   const api = window.tank?.auth
   useEffect(() => {
-    api?.restore().then(r => r.ok && setU(r.user)).catch(() => {})
+    api?.restore().then(r => { if (r.ok) setU(r.user); else if (r.error) toast(r.error) }).catch(() => {})
     return api?.onCode(setCode)
   }, [])
   const login = async () => {

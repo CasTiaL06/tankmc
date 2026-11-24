@@ -7,19 +7,30 @@ permissions:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 25
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with:
+          node-version: 20
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+      - name: Etiket ile package.json sürümü eşleşiyor mu?
+        shell: bash
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          if [ "$v" != "$GITHUB_REF_NAME" ]; then echo "Etiket $GITHUB_REF_NAME ama package.json sürümü $v"; exit 1; fi
       - name: Bağımlılıklar
         shell: bash
         run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
-      - name: Derle ve portable EXE üret
+      - name: Kurulumlu + portable EXE üret
         run: npm run dist
       - name: GitHub Release oluştur
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.exe
+          name: TankClient ${{ github.ref_name }}
+          files: |
+            release/TankClient-Setup-*.exe
+            release/TankClient-Portable-*.exe
           generate_release_notes: true

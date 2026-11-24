@@ -24,8 +24,8 @@ export default function Settings() {
           <Row t="Java’yı otomatik yönet" s="Sürüme uygun Java indirilir"><Toggle on={auto} set={setAuto} /></Row>
           <Row t="Java yolu" s="Otomatik açıkken devre dışı"><input type="text" disabled={auto} value={auto ? 'Otomatik' : jp} onChange={e => setJp(e.target.value)} /></Row></>}
         {tab === 'Klasörler' && <>
-          <Row t="Minecraft klasörü"><input type="text" defaultValue="%APPDATA%\.tankmc" /></Row>
-          <Row t="İndirme klasörü"><input type="text" defaultValue="%APPDATA%\.tankmc\downloads" /></Row></>}
+          <Row t="Minecraft klasörü"><input type="text" defaultValue="%APPDATA%\TankClient" /></Row>
+          <Row t="İndirme klasörü"><input type="text" defaultValue="%APPDATA%\TankClient\downloads" /></Row></>}
         {tab === 'Launcher' && <>
           <Row t="Otomatik güncelleme" s="Yeni sürümleri bildir ve indir"><Toggle on={upd} set={setUpd} /></Row>
           <Row t="Oyun açılınca küçült"><Toggle on={min} set={setMin} /></Row>

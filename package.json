@@ -1,31 +1,48 @@
 {
-  "name": "tankmc",
+  "name": "tankclient",
   "version": "0.1.0",
-  "description": "TANKmc Minecraft Launcher",
+  "description": "TankClient Minecraft Launcher",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "tsc -p electron && concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
     "build": "tsc -p electron && tsc --noEmit && vite build",
-    "dist": "npm run build && electron-builder --win portable --publish never",
-    "typecheck": "tsc -p electron --noEmit && tsc --noEmit"
+    "dist": "npm run build && electron-builder --win nsis portable --publish never",
+    "typecheck": "tsc -p electron --noEmit && tsc --noEmit",
+    "dist:setup": "npm run build && electron-builder --win nsis --publish never",
+    "dist:portable": "npm run build && electron-builder --win portable --publish never"
   },
   "build": {
-    "appId": "com.tankmc.launcher",
-    "productName": "TANKmc",
+    "appId": "com.tankclient.launcher",
+    "productName": "TankClient",
+    "copyright": "TankClient contributors",
     "files": [
       "dist/**",
       "dist-electron/**"
     ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
     "win": {
       "target": [
+        "nsis",
         "portable"
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
-    "directories": {
-      "output": "release"
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "TankClient",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "TankClient-Setup-${version}.exe",
+      "language": "1055"
     },
     "portable": {
-      "artifactName": "TANKmc-Portable-${version}.exe"
+      "artifactName": "TankClient-Portable-${version}.exe"
     }
   },
   "dependencies": {
@@ -46,5 +63,5 @@
   },
   "private": true,
   "license": "MIT",
-  "author": "TANKmc"
+  "author": "TankClient"
 }
