@@ -37,12 +37,12 @@ ipcMain.handle('auth:logout', () => auth.logout())
 ipcMain.handle('game:versions', async () => { try { return { ok: true, versions: await game.listVersions() } } catch (e) { return { ok: false, error: 'Sürüm listesi alınamadı: ' + (e as Error).message } } })
 ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unknown) => {
   if (game.busy()) return { ok: false, error: 'Oyun zaten hazırlanıyor veya çalışıyor.' }
-  let version = id, profileDir: string | undefined
+  let version = id, profileDir: string | undefined, loader: string | undefined
   if (profileId != null) {
     const p = typeof profileId === 'string' ? mi.loadAll(mctx()).find(x => x.id === profileId) : undefined
     if (!p) return { ok: false, error: 'Profil bulunamadı.' }
-    if (p.loader !== 'vanilla') return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
-    version = p.mc; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
+    if (!['vanilla', 'fabric', 'quilt'].includes(p.loader)) return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
+    version = p.mc; loader = p.loader; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
   }
   if (typeof version !== 'string' || !/^[\w.\-]{1,40}$/.test(version)) return { ok: false, error: 'Geçersiz sürüm.' }
   let join: { host: string; port: number | null } | undefined
@@ -56,7 +56,7 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
     const st = ch === 'game:state' ? (p as { state: string }).state : ''
     if (st === 'running' && cfg.minimizeOnLaunch) win.minimize()
     if ((st === 'exited' || st === 'error') && win.isMinimized()) { win.restore(); win.focus() }
-  }, cfg, join, profileDir)
+  }, cfg, join, profileDir, loader)
   return { ok: true }
 })
 

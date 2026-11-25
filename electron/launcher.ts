@@ -5,6 +5,7 @@ import crypto from 'crypto'
 import { spawn, execFile } from 'child_process'
 import { buildArgs, joinArgs, ruleOk, safeJoin } from './launchargs'
 import * as auth from './auth'
+import { applyLoader } from './loaders'
 import type { Settings } from './settings'
 
 type Emit = (ch: 'game:progress' | 'game:state', p: unknown) => void
@@ -50,7 +51,7 @@ async function ensureJava(component: string, step: (t: string, p: number) => voi
   fs.writeFileSync(ok, ''); return exe
 }
 
-export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string) {
+export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string, loader?: string) {
   running = true
   rootDir = cfg.gameDir || path.join(app.getPath('userData'), 'minecraft')
   const step = (text: string, pct: number) => emit('game:progress', { text, pct })
@@ -62,8 +63,12 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
     if (!entry) throw new Error('Bilinmeyen Minecraft sürümü: ' + id)
     const R = root(), vdir = path.join(R, 'versions', id)
     step('Sürüm bilgisi alınıyor…', 0.01)
-    const vj = await getJson(entry.url)
+    let vj = await getJson(entry.url)
     fs.mkdirSync(vdir, { recursive: true }); fs.writeFileSync(path.join(vdir, id + '.json'), JSON.stringify(vj))
+    if (loader === 'fabric' || loader === 'quilt') {
+      step('Loader hazırlanıyor…', 0.02)
+      vj = await applyLoader(loader, id, vj, { getJson, getText: async u => { const r = await fetch(u); if (!r.ok) throw new Error(`İndirme hatası (${r.status}): ${u}`); return r.text() } })
+    }
     let java: string
     if (cfg.javaAuto) java = await ensureJava(vj.javaVersion?.component ?? 'jre-legacy', step)
     else {

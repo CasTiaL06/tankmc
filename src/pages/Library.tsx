@@ -4,6 +4,7 @@ import NewProfile from '../components/NewProfile'
 import type { Game } from '../lib/useGame'
 import type { Profiles } from '../lib/useProfiles'
 
+const PLAYABLE = ['vanilla', 'fabric', 'quilt']
 const LN: Record<string, string> = { vanilla: 'Vanilla', fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge', quilt: 'Quilt' }
 
 export default function Library({ toast, g, p, go }: { toast: (m: string) => void; g: Game; p: Profiles; go: (k: 'packs') => void }) {
@@ -32,7 +33,7 @@ export default function Library({ toast, g, p, go }: { toast: (m: string) => voi
             <div className="meta"><span style={{ display: 'flex', gap: 6 }}>
               <button className="btn g" style={{ minWidth: 0 }} onClick={e => { e.stopPropagation(); p.setSelId(i.id); go('packs') }}>Modlar</button>
               <button className="btn g" style={{ minWidth: 0 }} onClick={e => { e.stopPropagation(); void del(i) }}>Sil</button></span>
-              <button className="btn" disabled={!canPlay || i.loader !== 'vanilla'} title={i.loader !== 'vanilla' ? `${LN[i.loader] ?? i.loader} ile başlatma sonraki aşamada eklenecek` : ''} style={i.loader !== 'vanilla' ? { opacity: .45 } : undefined} onClick={e => { e.stopPropagation(); play(i) }}>OYNA</button></div></div>
+              <button className="btn" disabled={!canPlay || !PLAYABLE.includes(i.loader)} title={!PLAYABLE.includes(i.loader) ? `${LN[i.loader] ?? i.loader} ile başlatma sonraki aşamada eklenecek` : ''} style={!PLAYABLE.includes(i.loader) ? { opacity: .45 } : undefined} onClick={e => { e.stopPropagation(); play(i) }}>OYNA</button></div></div>
         </div>))}</div>
       {form && <NewProfile vers={g.vers} onCreate={(n, m, l) => void create(n, m, l)} onClose={() => setForm(false)} />}
     </section>

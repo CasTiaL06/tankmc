@@ -8,16 +8,17 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 
 | Alan | Durum |
 |---|---|
-| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült) | Kalıcı kaydedilir ve oyun başlatılırken uygulanır; gerçek oyunla test edilmedi. Otomatik güncelleme ve Windows ile başlat henüz yok (kapalı gösterilir) |
-| Sunucular (ekle/düzenle/sil, favori, arama, detay, canlı durum, katıl) | Durum ve oyuncu sayısı sunucudan okunur (Server List Ping, örnek veri yok); gerçek sunucuyla ve gerçek oyunla test edilmedi. Liste `servers.json` içinde saklanır |
-| Arayüz (ana sayfa, sunucular, mod paketleri, ayarlar) | Çalışır; sunucu/paket verileri **örnek**, OYNA/Kur/Katıl düğmeleri **henüz gerçek işlem yapmaz** |
-| Microsoft girişi | Client ID tanımlı; kod yazıldı ama gerçek hesapla henüz test edilmedi. Minecraft servisleri için Mojang uygulama onayı gerekebilir (aşağıya bak) |
-| Marka (TankClient), ikon | Tamam |
-| Veri klasörü ve TANKmc-Data taşıması | Yazıldı, mantığı bu ortamda test edildi (aşağıya bak) |
-| Kurulumlu (NSIS) ve portable EXE yapılandırması | Hazır, derlenmedi |
-| GitHub Actions | Hazır, henüz çalıştırılmadı |
-| Minecraft başlatma (yalnızca **Vanilla**, 1.8.9 ve sonrası): resmî manifest, kütüphane/asset indirme ve SHA1 doğrulama, Mojang Java çalışma ortamı, RAM, süreç takibi | Yazıldı, **gerçek ağ ve oyunla test edilmedi**; Microsoft girişi gerekir |
-| Forge/Fabric/NeoForge, Modrinth, indirme merkezi, profil sayfası, ayarların kalıcılığı (RAM şimdilik 4 GB sabit) | Henüz yok |
+| Arayüz (Ana sayfa, Kütüphane, Sunucular, Mod Kütüphanesi, Ayarlar) | Çalışır |
+| Marka (TankClient), ikon, veri klasörü, eski TANKmc-Data taşıması | Yazıldı; taşıma mantığı test edildi |
+| Microsoft girişi | Client ID tanımlı; gerçek hesapla test edilmedi, Minecraft servisleri için Mojang uygulama onayı gerekir |
+| Vanilla başlatma (1.8.9+; resmî manifest, kütüphane/asset indirme, SHA1 doğrulama, Mojang Java) | Yazıldı; argüman mantığı test edildi, gerçek oyunla denenmedi |
+| Fabric ve Quilt başlatma (resmî meta API, modlar profil klasöründen yüklenir) | Yazıldı; birleştirme mantığı test edildi, gerçek oyunla denenmedi |
+| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült) | Kalıcı ve oyun başlarken uygulanır; otomatik güncelleme ve Windows ile başlat yok (kapalı gösterilir) |
+| Sunucular (ekle/düzenle/sil, favori, arama, detay, canlı durum, katıl) | Durum ve oyuncu sayısı sunucudan okunur; gerçek sunucuyla denenmedi |
+| Mod Kütüphanesi (Modrinth: arama, kategori, uyumluluk, bağımlılıklar, etkinleştir/devre dışı, güncelleme, .mrpack mod paketleri) | Kurulum mantığı sahte API ile test edildi; gerçek Modrinth ile denenmedi |
+| Kütüphane ve profiller, Minecraft haberleri | Yazıldı; arayüz denenmedi |
+| EXE (kurulumlu + portable) ve GitHub Actions | Derleme adımı çalıştı; Release yükleme `gh` ile yapılır |
+| Forge ve NeoForge ile başlatma, indirme merkezi, oyuncu profili sayfası, otomatik güncelleme | Henüz yok |
 
 ## Geliştirme
 

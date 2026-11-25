@@ -95,7 +95,7 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
         </> : <span className="st">{insts ? 'Mod kurmak için bir profil oluştur.' : 'Yükleniyor…'}</span>}
         <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setForm(true)}>+ YENİ PROFİL</button>
       </div>
-      <p className="notice">Fabric, Forge ve NeoForge ile oyun başlatma sonraki aşamada eklenecek. Kurduğun modlar profil klasöründe hazır bekler; OYNA şimdilik yalnızca Vanilla başlatır.</p>
+      <p className="notice">Fabric ve Quilt profillerini Kütüphane’den oynayabilirsin; modlar profil klasöründen yüklenir. Forge ve NeoForge ile başlatma sonraki aşamada eklenecek.</p>
       <div className="tabs">{([['mod', 'Keşfet'], ['modpack', 'Mod Paketleri'], ['installed', `Kurulu (${inst?.mods.length ?? 0})`]] as const).map(([k, v]) => <button key={k} className={'fc' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{v}</button>)}</div>
 
       {tab === 'installed' ? (

@@ -60,7 +60,7 @@ function Home({ go, g }: { go: (p: Page) => void; g: Game }) {
           <div className="row">
             <button className="play" onClick={() => void g.play()} disabled={g.busy}><svg viewBox="0 0 24 24"><path d="M6 3l15 9-15 9z" /></svg>{g.live ? 'OYUN AÇIK' : g.busy ? 'HAZIRLANIYOR' : 'OYNA'}</button>
             <select value={g.ver} onChange={e => g.setVer(e.target.value)} disabled={g.busy}>{g.vers.length ? g.vers.map(v => <option key={v}>{v}</option>) : <option>{window.tank ? 'Sürümler yükleniyor…' : 'Sürüm yok'}</option>}</select>
-            <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(v => <option key={v} disabled={v !== 'Vanilla'}>{v}{v !== 'Vanilla' ? ' (yakında)' : ''}</option>)}</select>
+            <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(v => <option key={v} disabled={v !== 'Vanilla'}>{v}{v !== 'Vanilla' ? ' (profil ile)' : ''}</option>)}</select>
           </div>
           <div className={'bar' + (g.prog ? ' on' : '')}><i style={{ width: (g.prog ? g.prog.pct * 100 : 0) + '%' }} /></div>
           <div className="st">{g.prog?.text}</div>

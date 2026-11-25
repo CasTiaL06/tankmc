@@ -27,11 +27,30 @@ jobs:
         run: if [ -f package-lock.json ]; then npm ci; else npm install; fi
       - name: Kurulumlu + portable EXE üret
         run: npm run dist
-      - name: GitHub Release oluştur
-        uses: softprops/action-gh-release@v2
+      - name: Artifact - kurulumlu
+        uses: actions/upload-artifact@v4
         with:
-          name: TankClient ${{ github.ref_name }}
-          files: |
-            release/TankClient-Setup-*.exe
-            release/TankClient-Portable-*.exe
-          generate_release_notes: true
+          name: TankClient-Setup
+          path: release/TankClient-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Artifact - portable
+        uses: actions/upload-artifact@v4
+        with:
+          name: TankClient-Portable
+          path: release/TankClient-Portable-*.exe
+          if-no-files-found: error
+          retention-days: 14
+      # Release elle oluşturulmuşsa dosyalar ona yüklenir (başlığı/açıklaması değişmez); yoksa yeni release oluşturulur.
+      - name: GitHub Release'e EXE'leri yükle
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          files=(release/TankClient-Setup-*.exe release/TankClient-Portable-*.exe)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            gh release create "$tag" "${files[@]}" --title "TankClient $tag" --generate-notes
+          fi
