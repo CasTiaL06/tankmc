@@ -6,6 +6,11 @@ function sub<T>(ch: string, cb: (v: T) => void) {
 }
 contextBridge.exposeInMainWorld('tank', {
   platform: process.platform,
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (s: unknown) => ipcRenderer.invoke('settings:set', s),
+    pick: (kind: 'java' | 'folder') => ipcRenderer.invoke('settings:pick', kind),
+  },
   game: {
     versions: () => ipcRenderer.invoke('game:versions'),
     play: (id: string) => ipcRenderer.invoke('game:play', id),

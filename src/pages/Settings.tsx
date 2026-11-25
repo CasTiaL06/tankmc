@@ -1,35 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const TABS = ['Oyun', 'Java', 'Klasörler', 'Launcher'] as const
-const Toggle = ({ on, set }: { on: boolean; set: (v: boolean) => void }) => <div className={'tg' + (on ? ' on' : '')} onClick={() => set(!on)} />
-
-const Row = ({ t, s, children }: { t: string; s?: string; children: React.ReactNode }) => <div className="set"><div>{t}{s && <small>{s}</small>}</div>{children}</div>
+const RES = ['1280x720', '1600x900', '1920x1080', '2560x1440']
+const Toggle = ({ on, set }: { on: boolean; set?: (v: boolean) => void }) =>
+  <div className={'tg' + (on ? ' on' : '')} style={set ? undefined : { opacity: .4, pointerEvents: 'none' }} onClick={() => set?.(!on)} />
+const Row = ({ t, s, children }: { t: string; s?: string; children: React.ReactNode }) =>
+  <div className="set"><div>{t}{s && <small>{s}</small>}</div>{children}</div>
 
 export default function Settings() {
+  const api = window.tank?.settings
   const [tab, setTab] = useState<typeof TABS[number]>('Oyun')
-  const [ram, setRam] = useState(4), [res, setRes] = useState('1920×1080'), [full, setFull] = useState(false)
-  const [auto, setAuto] = useState(true), [jp, setJp] = useState('C:\\Program Files\\Java\\bin\\javaw.exe')
-  const [upd, setUpd] = useState(true), [min, setMin] = useState(false), [boot, setBoot] = useState(false)
-  const note = ram < 3 ? 'Düşük: büyük paketlerde yetersiz kalabilir' : ram > 12 ? 'Yüksek: gereksiz olabilir' : 'Önerilen: 4–6 GB'
+  const [s, setS] = useState<AppSettings | null>(null), [maxRam, setMaxRam] = useState(16384), [defDir, setDefDir] = useState('')
+  const timer = useRef<number>()
+  useEffect(() => {
+    api?.get().then(r => { setS(r.settings); setMaxRam(r.maxRamMb); setDefDir(r.defaultGameDir) })
+    return () => clearTimeout(timer.current)
+  }, [])
+  if (!api) return <section className="view on"><h1>Ayarlar</h1><p className="sub">Ayarlar yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
+  if (!s) return <section className="view on"><h1>Ayarlar</h1></section>
+  const up = (p: Partial<AppSettings>) => {
+    const n = { ...s, ...p }; setS(n)
+    clearTimeout(timer.current); timer.current = window.setTimeout(() => { void api.set(n) }, 300)
+  }
+  const pickJava = async () => { const p = await api.pick('java'); if (p) up({ javaPath: p }) }
+  const pickDir = async () => { const p = await api.pick('folder'); if (p) up({ gameDir: p }) }
+  const gb = s.ramMb / 1024
+  const note = gb < 3 ? 'Düşük: büyük paketlerde yetersiz kalabilir' : gb > 12 ? 'Yüksek: gereksiz olabilir' : 'Önerilen: 4–6 GB'
+  const resList = RES.includes(s.resolution) ? RES : [s.resolution, ...RES]
   return (
     <section className="view on">
-      <h1>Ayarlar</h1><p className="sub">Launcher ve oyun tercihleri</p>
+      <h1>Ayarlar</h1><p className="sub">Değişiklikler otomatik kaydedilir ve sonraki oyun başlatmada uygulanır</p>
       <div className="tabs">{TABS.map(t => <button key={t} className={'fc' + (t === tab ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>)}</div>
       <div className="pane on" key={tab}>
         {tab === 'Oyun' && <>
-          <Row t="Ayrılan RAM" s={note}><div className="row"><input type="range" min={2} max={16} value={ram} onChange={e => setRam(+e.target.value)} /><b style={{ width: 48 }}>{ram} GB</b></div></Row>
-          <Row t="Çözünürlük" s="Oyun penceresi boyutu"><select value={res} onChange={e => setRes(e.target.value)}>{['1280×720', '1600×900', '1920×1080'].map(r => <option key={r}>{r}</option>)}</select></Row>
-          <Row t="Tam ekran" s="Oyunu tam ekran başlat"><Toggle on={full} set={setFull} /></Row></>}
+          <Row t="Ayrılan RAM" s={note}><div className="row"><input type="range" min={2048} max={maxRam} step={512} value={Math.min(s.ramMb, maxRam)} onChange={e => up({ ramMb: +e.target.value })} /><b style={{ width: 56 }}>{+gb.toFixed(1)} GB</b></div></Row>
+          <Row t="Çözünürlük" s="Oyun penceresi boyutu"><select value={s.resolution} onChange={e => up({ resolution: e.target.value })}>{resList.map(r => <option key={r} value={r}>{r.replace('x', '×')}</option>)}</select></Row>
+          <Row t="Tam ekran" s="Oyunu tam ekran başlat"><Toggle on={s.fullscreen} set={v => up({ fullscreen: v })} /></Row></>}
         {tab === 'Java' && <>
-          <Row t="Java’yı otomatik yönet" s="Sürüme uygun Java indirilir"><Toggle on={auto} set={setAuto} /></Row>
-          <Row t="Java yolu" s="Otomatik açıkken devre dışı"><input type="text" disabled={auto} value={auto ? 'Otomatik' : jp} onChange={e => setJp(e.target.value)} /></Row></>}
+          <Row t="Java’yı otomatik yönet" s="Sürüme uygun Mojang Java’sı indirilir"><Toggle on={s.javaAuto} set={v => up({ javaAuto: v })} /></Row>
+          {!s.javaAuto && <Row t="Java yolu" s="Oyun sürümüne uygun bir java.exe seç"><div className="row"><input type="text" readOnly title={s.javaPath} value={s.javaPath || 'Seçilmedi'} /><button className="btn g" onClick={pickJava}>Seç…</button></div></Row>}</>}
         {tab === 'Klasörler' && <>
-          <Row t="Minecraft klasörü"><input type="text" defaultValue="%APPDATA%\TankClient" /></Row>
-          <Row t="İndirme klasörü"><input type="text" defaultValue="%APPDATA%\TankClient\downloads" /></Row></>}
+          <Row t="Minecraft klasörü" s="Yeni dosyalar buraya indirilir; mevcut dosyalar taşınmaz"><div className="row"><input type="text" readOnly title={s.gameDir || defDir} value={s.gameDir || defDir} /><button className="btn g" onClick={pickDir}>Seç…</button>{s.gameDir && <button className="btn g" onClick={() => up({ gameDir: '' })}>Varsayılan</button>}</div></Row></>}
         {tab === 'Launcher' && <>
-          <Row t="Otomatik güncelleme" s="Yeni sürümleri bildir ve indir"><Toggle on={upd} set={setUpd} /></Row>
-          <Row t="Oyun açılınca küçült"><Toggle on={min} set={setMin} /></Row>
-          <Row t="Windows ile başlat"><Toggle on={boot} set={setBoot} /></Row></>}
+          <Row t="Oyun açılınca küçült" s="Oyun kapanınca launcher geri gelir"><Toggle on={s.minimizeOnLaunch} set={v => up({ minimizeOnLaunch: v })} /></Row>
+          <Row t="Otomatik güncelleme" s="Güncelleme sistemi eklenince etkinleşecek"><Toggle on={false} /></Row>
+          <Row t="Windows ile başlat" s="Henüz desteklenmiyor"><Toggle on={false} /></Row></>}
       </div>
     </section>
   )

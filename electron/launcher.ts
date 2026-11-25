@@ -5,14 +5,14 @@ import crypto from 'crypto'
 import { spawn, execFile } from 'child_process'
 import { buildArgs, ruleOk, safeJoin } from './launchargs'
 import * as auth from './auth'
+import type { Settings } from './settings'
 
 type Emit = (ch: 'game:progress' | 'game:state', p: unknown) => void
 const MANIFEST = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json'
 const RUNTIMES = 'https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json'
 const ASSETS = 'https://resources.download.minecraft.net/'
-const RAM_MB = 4096 // Aşama "Ayarlar"da ayar sayfasına bağlanacak
-let running = false, mf: any
-const root = () => path.join(app.getPath('userData'), 'minecraft')
+let running = false, mf: any, rootDir = ''
+const root = () => rootDir
 export const busy = () => running
 
 const getJson = async (u: string): Promise<any> => { const r = await fetch(u); if (!r.ok) throw new Error(`İndirme hatası (${r.status}): ${u}`); return r.json() }
@@ -50,8 +50,9 @@ async function ensureJava(component: string, step: (t: string, p: number) => voi
   fs.writeFileSync(ok, ''); return exe
 }
 
-export async function play(id: string, emit: Emit) {
+export async function play(id: string, emit: Emit, cfg: Settings) {
   running = true
+  rootDir = cfg.gameDir || path.join(app.getPath('userData'), 'minecraft')
   const step = (text: string, pct: number) => emit('game:progress', { text, pct })
   try {
     emit('game:state', { state: 'preparing' })
@@ -63,7 +64,12 @@ export async function play(id: string, emit: Emit) {
     step('Sürüm bilgisi alınıyor…', 0.01)
     const vj = await getJson(entry.url)
     fs.mkdirSync(vdir, { recursive: true }); fs.writeFileSync(path.join(vdir, id + '.json'), JSON.stringify(vj))
-    const java = await ensureJava(vj.javaVersion?.component ?? 'jre-legacy', step)
+    let java: string
+    if (cfg.javaAuto) java = await ensureJava(vj.javaVersion?.component ?? 'jre-legacy', step)
+    else {
+      if (!/\.exe$/i.test(cfg.javaPath) || !fs.existsSync(cfg.javaPath)) throw new Error('Seçilen Java bulunamadı veya geçersiz: ' + (cfg.javaPath || '(boş)'))
+      java = cfg.javaPath
+    }
 
     const jobs: { url: string; dest: string; sha1?: string }[] = [], cp: string[] = [], natives: string[] = []
     const jar = path.join(vdir, id + '.jar')
@@ -86,7 +92,8 @@ export async function play(id: string, emit: Emit) {
     for (const j of natives) await new Promise<void>((res, rej) => execFile('tar', ['-xf', j, '-C', nd], e => e ? rej(new Error('Native dosyalar açılamadı: ' + e.message)) : res()))
 
     const v = { auth_player_name: s.name, version_name: id, game_directory: R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
-    const args = [`-Xmx${RAM_MB}M`, ...buildArgs(vj, v)]
+    const [w, h] = cfg.resolution.split('x')
+    const args = [`-Xmx${cfg.ramMb}M`, ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : [])]
     step('Minecraft başlatılıyor…', 0.95)
     const logDir = path.join(app.getPath('userData'), 'logs'); fs.mkdirSync(logDir, { recursive: true })
     const log = fs.createWriteStream(path.join(logDir, `game-${Date.now()}.log`)) // erişim token'ı günlüğe yazılmaz

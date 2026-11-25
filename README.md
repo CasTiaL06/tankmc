@@ -8,6 +8,7 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 
 | Alan | Durum |
 |---|---|
+| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült) | Kalıcı kaydedilir ve oyun başlatılırken uygulanır; gerçek oyunla test edilmedi. Otomatik güncelleme ve Windows ile başlat henüz yok (kapalı gösterilir) |
 | Arayüz (ana sayfa, sunucular, mod paketleri, ayarlar) | Çalışır; sunucu/paket verileri **örnek**, OYNA/Kur/Katıl düğmeleri **henüz gerçek işlem yapmaz** |
 | Microsoft girişi | Client ID tanımlı; kod yazıldı ama gerçek hesapla henüz test edilmedi. Minecraft servisleri için Mojang uygulama onayı gerekebilir (aşağıya bak) |
 | Marka (TankClient), ikon | Tamam |
