@@ -1,5 +1,5 @@
 :root{color-scheme:dark;--bg:#08080a;--s1:#111214;--s2:#18191c;--s3:#222428;--ln:#2a2c31;--tx:#f4f3f0;--mu:#8c9097;--or:#ff6a1a;--or2:#ffa040;--ok:#3ddc84;--r:18px;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-*{box-sizing:border-box;margin:0}html,body{height:100%}
+*{box-sizing:border-box;margin:0}html,body,#root{height:100%}
 body{background:var(--bg);color:var(--tx);font:14px/1.5 "Segoe UI",system-ui,sans-serif;overflow:hidden}
 button,input,select{font:inherit;color:inherit}
 .app{display:grid;grid-template-columns:244px 1fr;height:100%;min-width:900px}
