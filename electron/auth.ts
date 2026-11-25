@@ -5,7 +5,7 @@ import { CLIENT_ID } from './config'
 
 const MS = 'https://login.microsoftonline.com/consumers/oauth2/v2.0'
 const SCOPE = 'XboxLive.signin offline_access'
-interface Session { name: string; uuid: string; mcToken: string; mcExpires: number; refresh: string }
+export interface Session { name: string; uuid: string; mcToken: string; mcExpires: number; refresh: string }
 export interface PublicUser { name: string; uuid: string }
 let cur: Session | null = null, cancelled = false
 const file = () => path.join(app.getPath('userData'), 'session.bin')
@@ -70,4 +70,9 @@ export async function restore(): Promise<{ user: PublicUser | null; notice?: str
   catch { return { user: null } }
 }
 export function logout() { cur = null; try { fs.rmSync(file(), { force: true }) } catch { /* yok say */ } }
-export const getSession = () => cur // Aşama 4'te oyun başlatma buradan token alacak
+export const getSession = () => cur
+// Oturum yoksa veya süresi dolmak üzereyse (yenileme belirteciyle) yeniler; yoksa null döner.
+export async function ensureSession(): Promise<Session | null> {
+  if (!cur || cur.mcExpires < Date.now() + 60000) await restore()
+  return cur
+}

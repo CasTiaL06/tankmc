@@ -16,31 +16,44 @@ const NAV = [['home', 'Ana Sayfa'], ['servers', 'Sunucular'], ['packs', 'Mod Pak
 type Page = typeof NAV[number][0]
 
 function Home({ go, toast }: { go: (p: Page) => void; toast: (m: string) => void }) {
-  const [ver, setVer] = useState('1.21.4'), [ldr, setLdr] = useState('Fabric'), [last, setLast] = useState('Fabric 1.21.4 · Performans+')
-  const [pct, setPct] = useState<number | null>(null)
+  const api = window.tank?.game
+  const [vers, setVers] = useState<string[]>([]), [ver, setVer] = useState(''), [ldr, setLdr] = useState('Vanilla')
+  const [last, setLast] = useState<string | null>(() => { try { return localStorage.getItem('tc.last') } catch { return null } })
+  const [busy, setBusy] = useState(false), [live, setLive] = useState(false), [prog, setProg] = useState<{ text: string; pct: number } | null>(null)
+  const verRef = useRef(''); verRef.current = ver
   const iso = useMemo(isoHero, [])
-  const S = ['Sürüm bilgisi alınıyor…', 'Kütüphaneler indiriliyor…', 'Assetler doğrulanıyor…', 'Oyun başlatılıyor…']
-  const play = () => {
-    setPct(0)
-    const t = setInterval(() => setPct(p => {
-      const v = (p ?? 0) + 2
-      if (v >= 100) { clearInterval(t); setLast(`${ldr} ${ver}`); setTimeout(() => setPct(null), 1400); toast('Önizleme: gerçek başlatma sonraki aşamada bağlanacak.') }
-      return Math.min(v, 100)
-    }), 55)
+  useEffect(() => {
+    if (!api) return
+    api.versions().then(r => { if (r.ok) { setVers(r.versions); setVer(v => v || r.versions[0]) } else toast(r.error) })
+    const offs = [api.onProgress(setProg), api.onState(s => {
+      if (s.state === 'preparing') setBusy(true)
+      if (s.state === 'running') {
+        setLive(true); setProg(null)
+        const l = `Vanilla ${verRef.current}`; setLast(l); try { localStorage.setItem('tc.last', l) } catch { /* yok say */ }
+      }
+      if (s.state === 'exited' || s.state === 'error') { setBusy(false); setLive(false); setProg(null); if (s.message) toast(s.message) }
+    })]
+    return () => offs.forEach(f => f())
+  }, [])
+  const play = async () => {
+    if (!api) return toast('Oyun başlatma yalnızca masaüstü uygulamasında çalışır.')
+    if (!ver) return toast('Sürüm listesi henüz yüklenmedi.')
+    const r = await api.play(ver)
+    if (!r.ok) toast(r.error ?? 'Başlatılamadı.')
   }
   return (
     <section className="view on">
       <div className="hero">
         <svg className="iso" viewBox="0 0 520 340" preserveAspectRatio="xMidYMid slice" dangerouslySetInnerHTML={{ __html: iso }} />
         <div className="hc"><span className="tag">MINECRAFT JAVA LAUNCHER</span><h2>Blokları <b>sen</b> yönet.</h2>
-          <div className="last">Son oynanan: <b>{last}</b></div>
+          <div className="last">Son oynanan: <b>{last ?? 'Henüz oynanmadı'}</b></div>
           <div className="row">
-            <button className="play" onClick={play} disabled={pct !== null}><svg viewBox="0 0 24 24"><path d="M6 3l15 9-15 9z" /></svg>OYNA</button>
-            <select value={ver} onChange={e => setVer(e.target.value)}>{['1.21.4', '1.20.1', '1.16.5', '1.8.9'].map(v => <option key={v}>{v}</option>)}</select>
-            <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Fabric', 'Vanilla', 'Forge', 'NeoForge'].map(v => <option key={v}>{v}</option>)}</select>
+            <button className="play" onClick={play} disabled={busy}><svg viewBox="0 0 24 24"><path d="M6 3l15 9-15 9z" /></svg>{live ? 'OYUN AÇIK' : busy ? 'HAZIRLANIYOR' : 'OYNA'}</button>
+            <select value={ver} onChange={e => setVer(e.target.value)} disabled={busy}>{vers.length ? vers.map(v => <option key={v}>{v}</option>) : <option>{api ? 'Sürümler yükleniyor…' : 'Sürüm yok'}</option>}</select>
+            <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(v => <option key={v} disabled={v !== 'Vanilla'}>{v}{v !== 'Vanilla' ? ' (yakında)' : ''}</option>)}</select>
           </div>
-          <div className={'bar' + (pct !== null ? ' on' : '')}><i style={{ width: (pct ?? 0) + '%' }} /></div>
-          <div className="st">{pct !== null && `${S[Math.min(3, (pct / 26) | 0)]} %${pct}`}</div>
+          <div className={'bar' + (prog ? ' on' : '')}><i style={{ width: (prog ? prog.pct * 100 : 0) + '%' }} /></div>
+          <div className="st">{prog?.text}</div>
         </div>
       </div>
       <h2 className="sec">Öne çıkan içerikler</h2>

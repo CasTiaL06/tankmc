@@ -14,7 +14,8 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 | Veri klasörü ve TANKmc-Data taşıması | Yazıldı, mantığı bu ortamda test edildi (aşağıya bak) |
 | Kurulumlu (NSIS) ve portable EXE yapılandırması | Hazır, derlenmedi |
 | GitHub Actions | Hazır, henüz çalıştırılmadı |
-| Minecraft başlatma, Java, Forge/Fabric/NeoForge, Modrinth, indirme merkezi, profil sayfası | Henüz yok |
+| Minecraft başlatma (yalnızca **Vanilla**, 1.8.9 ve sonrası): resmî manifest, kütüphane/asset indirme ve SHA1 doğrulama, Mojang Java çalışma ortamı, RAM, süreç takibi | Yazıldı, **gerçek ağ ve oyunla test edilmedi**; Microsoft girişi gerekir |
+| Forge/Fabric/NeoForge, Modrinth, indirme merkezi, profil sayfası, ayarların kalıcılığı (RAM şimdilik 4 GB sabit) | Henüz yok |
 
 ## Geliştirme
 
@@ -33,6 +34,10 @@ npm run dist:portable    # yalnızca portable
 Çıktılar `release/` klasöründe:
 - `TankClient-Setup-0.1.0.exe`: kurulum sihirbazı (konum seçimi, masaüstü ve Başlat menüsü kısayolu, Program Ekle/Kaldır'dan kaldırma). Yönetici izni gerektirmeden kullanıcı bazında kurulur.
 - `TankClient-Portable-0.1.0.exe`: kurulum gerektirmez.
+
+## Oyun dosyaları
+
+OYNA, seçilen sürümü `minecraft` klasörüne (portable: `TankClient-Data\minecraft`) indirir. Java'yı Mojang'ın resmî çalışma ortamından otomatik indirir (şimdilik yalnızca 64-bit Windows). Oyun günlükleri `logs` klasörüne yazılır; erişim belirteci günlüğe yazılmaz. Microsoft girişi yapılmadan oyun başlatılmaz; offline mod yoktur.
 
 ## Veri nerede tutulur?
 

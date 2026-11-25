@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import path from 'path'
 import * as auth from './auth'
 import { resolveDataDir } from './paths'
+import * as game from './launcher'
 
 // Taşınabilir sürüm: veri exe'nin yanındaki TankClient-Data klasöründe. Kurulumlu sürüm: %APPDATA%\TankClient.
 // Eski TANKmc-Data / TANKmc verisi varsa kopyalanır (eskisi silinmez).
@@ -26,6 +27,13 @@ ipcMain.handle('auth:login', async () => {
 })
 ipcMain.handle('auth:cancel', () => auth.cancelLogin())
 ipcMain.handle('auth:logout', () => auth.logout())
+ipcMain.handle('game:versions', async () => { try { return { ok: true, versions: await game.listVersions() } } catch (e) { return { ok: false, error: 'Sürüm listesi alınamadı: ' + (e as Error).message } } })
+ipcMain.handle('game:play', (_e, id: unknown) => {
+  if (typeof id !== 'string' || !/^[\w.\-]{1,40}$/.test(id)) return { ok: false, error: 'Geçersiz sürüm.' }
+  if (game.busy()) return { ok: false, error: 'Oyun zaten hazırlanıyor veya çalışıyor.' }
+  void game.play(id, (ch, p) => win.webContents.send(ch, p))
+  return { ok: true }
+})
 app.whenReady().then(() => {
   if (data.migrationError) dialog.showErrorBox('TankClient', `Eski veriler (TANKmc) yeni klasöre kopyalanamadı. Eski klasörün yerinde duruyor, hiçbir veri silinmedi.\n\n${data.migrationError}`)
   createWindow()
