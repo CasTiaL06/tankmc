@@ -6,6 +6,25 @@ function sub<T>(ch: string, cb: (v: T) => void) {
 }
 contextBridge.exposeInMainWorld('tank', {
   platform: process.platform,
+  mods: {
+    search: (o: unknown) => ipcRenderer.invoke('mods:search', o),
+    project: (id: string) => ipcRenderer.invoke('mods:project', id),
+    instances: () => ipcRenderer.invoke('mods:instances'),
+    create: (n: string, mc: string, ld: string) => ipcRenderer.invoke('mods:create', n, mc, ld),
+    remove: (id: string) => ipcRenderer.invoke('mods:delete', id),
+    install: (i: string, p: string) => ipcRenderer.invoke('mods:install', i, p),
+    uninstall: (i: string, p: string) => ipcRenderer.invoke('mods:uninstall', i, p),
+    toggle: (i: string, p: string) => ipcRenderer.invoke('mods:toggle', i, p),
+    check: (i: string) => ipcRenderer.invoke('mods:check', i),
+    update: (i: string, p: string) => ipcRenderer.invoke('mods:update', i, p),
+    installPack: (p: string) => ipcRenderer.invoke('mods:installPack', p),
+    open: (u: string) => ipcRenderer.invoke('app:open', u),
+  },
+  servers: {
+    list: () => ipcRenderer.invoke('servers:list'),
+    save: (l: unknown) => ipcRenderer.invoke('servers:save', l),
+    ping: (address: string) => ipcRenderer.invoke('servers:ping', address),
+  },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (s: unknown) => ipcRenderer.invoke('settings:set', s),
@@ -13,7 +32,7 @@ contextBridge.exposeInMainWorld('tank', {
   },
   game: {
     versions: () => ipcRenderer.invoke('game:versions'),
-    play: (id: string) => ipcRenderer.invoke('game:play', id),
+    play: (id: string, address?: string) => ipcRenderer.invoke('game:play', id, address),
     onProgress: (cb: (p: { text: string; pct: number }) => void) => sub('game:progress', cb),
     onState: (cb: (s: { state: string; message?: string }) => void) => sub('game:state', cb),
   },

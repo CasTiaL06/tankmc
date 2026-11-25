@@ -29,3 +29,9 @@ export function safeJoin(root: string, rel: string): string {
   if (p !== r && !p.startsWith(r + path.sep)) throw new Error('Güvensiz dosya yolu: ' + rel)
   return p
 }
+
+// Sunucuya doğrudan katılma: sürümün kendi JSON'u quick play destekliyorsa onu, değilse klasik --server/--port kullanır.
+export function joinArgs(j: VersionJson, host: string, port: number | null): string[] {
+  if (JSON.stringify(j.arguments ?? '').includes('quickPlayMultiplayer')) return ['--quickPlayMultiplayer', port ? `${host}:${port}` : host]
+  return port ? ['--server', host, '--port', String(port)] : ['--server', host]
+}

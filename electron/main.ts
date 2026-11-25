@@ -1,10 +1,14 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import os from 'os'
 import path from 'path'
 import * as settings from './settings'
 import * as auth from './auth'
 import { resolveDataDir } from './paths'
 import * as game from './launcher'
+import * as servers from './serverlist'
+import { ping } from './mcping'
+import * as mr from './modrinth'
+import * as mi from './modinstall'
 
 // Taşınabilir sürüm: veri exe'nin yanındaki TankClient-Data klasöründe. Kurulumlu sürüm: %APPDATA%\TankClient.
 // Eski TANKmc-Data / TANKmc verisi varsa kopyalanır (eskisi silinmez).
@@ -30,16 +34,21 @@ ipcMain.handle('auth:login', async () => {
 ipcMain.handle('auth:cancel', () => auth.cancelLogin())
 ipcMain.handle('auth:logout', () => auth.logout())
 ipcMain.handle('game:versions', async () => { try { return { ok: true, versions: await game.listVersions() } } catch (e) { return { ok: false, error: 'Sürüm listesi alınamadı: ' + (e as Error).message } } })
-ipcMain.handle('game:play', (_e, id: unknown) => {
+ipcMain.handle('game:play', (_e, id: unknown, address: unknown) => {
   if (typeof id !== 'string' || !/^[\w.\-]{1,40}$/.test(id)) return { ok: false, error: 'Geçersiz sürüm.' }
   if (game.busy()) return { ok: false, error: 'Oyun zaten hazırlanıyor veya çalışıyor.' }
+  let join: { host: string; port: number | null } | undefined
+  if (address != null) {
+    join = typeof address === 'string' ? servers.parseAddress(address) ?? undefined : undefined
+    if (!join) return { ok: false, error: 'Geçersiz sunucu adresi.' }
+  }
   const cfg = settings.sanitize(settings.load(data.dir), maxRam())
   void game.play(id, (ch, p) => {
     win.webContents.send(ch, p)
     const st = ch === 'game:state' ? (p as { state: string }).state : ''
     if (st === 'running' && cfg.minimizeOnLaunch) win.minimize()
     if ((st === 'exited' || st === 'error') && win.isMinimized()) { win.restore(); win.focus() }
-  }, cfg)
+  }, cfg, join)
   return { ok: true }
 })
 
@@ -52,6 +61,28 @@ ipcMain.handle('settings:pick', async (_e, kind: unknown) => {
   const r = await dialog.showOpenDialog(win, kind === 'java' ? { properties: ['openFile'], filters: [{ name: 'Java', extensions: ['exe'] }] } : { properties: ['openDirectory', 'createDirectory'] })
   return r.canceled ? null : r.filePaths[0]
 })
+// Sunucu listesi: diskte servers.json; durum bilgisi doğrudan sunucudan okunur (sahte sayı yok).
+ipcMain.handle('servers:list', () => servers.load(data.dir))
+ipcMain.handle('servers:save', (_e, raw: unknown) => { const l = servers.sanitizeList(raw); servers.save(data.dir, l); return l })
+ipcMain.handle('servers:ping', async (_e, address: unknown) => {
+  const a = typeof address === 'string' ? servers.parseAddress(address) : null
+  return a ? ping(a.host, a.port) : { online: false, error: 'Geçersiz adres' }
+})
+// Mod kütüphanesi (Modrinth). Ağ ve dosya işlemleri yalnızca ana süreçte yapılır; renderer'a ham erişim verilmez.
+const h = (ch: string, fn: (...a: any[]) => unknown) => ipcMain.handle(ch, async (_e, ...a) => { try { return { ok: true, ...(await fn(...a) as object) } } catch (e) { return { ok: false, error: (e as Error).message } } })
+const mctx = () => ({ root: data.dir, api: { getJson: mr.getJson, getBytes: (u: string) => mr.getBytes(u) } })
+h('mods:search', (o: unknown) => mr.search(o as any))
+h('mods:project', (id: unknown) => mr.project(String(id)))
+h('mods:instances', () => ({ instances: mi.loadAll(mctx()) }))
+h('mods:create', (n: unknown, mc: unknown, ld: unknown) => mi.createInstance(mctx(), String(n), String(mc), String(ld)))
+h('mods:delete', (id: unknown) => mi.deleteInstance(mctx(), String(id)))
+h('mods:install', (i: unknown, p: unknown) => mi.installMod(mctx(), String(i), String(p)))
+h('mods:uninstall', (i: unknown, p: unknown) => mi.removeMod(mctx(), String(i), String(p)))
+h('mods:toggle', (i: unknown, p: unknown) => mi.toggleMod(mctx(), String(i), String(p)))
+h('mods:check', (i: unknown) => mi.checkUpdates(mctx(), String(i)))
+h('mods:update', (i: unknown, p: unknown) => mi.updateMod(mctx(), String(i), String(p)))
+h('mods:installPack', (p: unknown) => mi.installModpack(mctx(), String(p)))
+ipcMain.handle('app:open', (_e, u: unknown) => { if (typeof u === 'string' && /^https:\/\/(modrinth\.com|github\.com)\//.test(u)) void shell.openExternal(u) })
 app.whenReady().then(() => {
   if (data.migrationError) dialog.showErrorBox('TankClient', `Eski veriler (TANKmc) yeni klasöre kopyalanamadı. Eski klasörün yerinde duruyor, hiçbir veri silinmedi.\n\n${data.migrationError}`)
   createWindow()
