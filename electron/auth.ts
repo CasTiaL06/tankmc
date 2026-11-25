@@ -24,6 +24,9 @@ const json = (url: string, b: unknown) => call(url, { method: 'POST', headers: {
 export function friendly(e: unknown): string {
   const x = e as any, c = x?.data?.XErr
   if (x?.message === 'cancel') return 'cancel'
+  const d: string = x?.data?.error_description ?? ''
+  if (d.includes('AADSTS7000218')) return 'Azure uygulamasında “Allow public client flows” kapalı. Azure → Authentication → Yes yapıp kaydet.'
+  if (d.includes('AADSTS700016') || d.includes('AADSTS50020') || x?.data?.error === 'unauthorized_client') return 'Azure uygulaması kişisel Microsoft hesaplarına açık değil. Azure → Authentication → Supported account types ayarına “Personal Microsoft accounts” ekle.'
   if (c === 2148916233) return 'Bu Microsoft hesabına bağlı bir Xbox profili yok. Önce xbox.com üzerinden oluşturun.'
   if (c === 2148916238) return 'Bu hesap 18 yaş altı; Microsoft aile ayarlarından izin verilmesi gerekiyor.'
   if (x?.status === 404) return 'Bu hesapta Minecraft Java Edition bulunamadı.'
@@ -47,7 +50,7 @@ export async function login(onCode: (c: { userCode: string; url: string }) => vo
   cancelled = false
   const dc = await form(MS + '/devicecode', { client_id: CLIENT_ID, scope: SCOPE })
   onCode({ userCode: dc.user_code, url: dc.verification_uri })
-  shell.openExternal(dc.verification_uri)
+  if (/^https:\/\//.test(String(dc.verification_uri))) void shell.openExternal(dc.verification_uri)
   let wait = (dc.interval || 5) * 1000
   const end = Date.now() + dc.expires_in * 1000
   while (Date.now() < end) {

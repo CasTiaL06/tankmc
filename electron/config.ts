@@ -1,2 +1,3 @@
-// Azure uygulama kaydından alınan Client ID. Genel (public client) bir kimliktir, gizli değildir; repoya yazılabilir. Ortam değişkeni (TANK_CLIENT_ID) varsa o öncelikli.
-export const CLIENT_ID: string = process.env.TANK_CLIENT_ID ?? ''
+// Azure uygulama kaydının Client ID'si (genel/public client kimliği: gizli değildir, repoya yazılabilir).
+// Gerekirse TANK_CLIENT_ID ortam değişkeni bunu geçersiz kılar (test için).
+export const CLIENT_ID: string = process.env.TANK_CLIENT_ID || '0615ced5-9cf2-4931-95df-8c0265e82a2a'

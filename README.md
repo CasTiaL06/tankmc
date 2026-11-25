@@ -9,7 +9,7 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 | Alan | Durum |
 |---|---|
 | Arayüz (ana sayfa, sunucular, mod paketleri, ayarlar) | Çalışır; sunucu/paket verileri **örnek**, OYNA/Kur/Katıl düğmeleri **henüz gerçek işlem yapmaz** |
-| Microsoft girişi | Kod yazıldı, gerçek hesapla test edilmedi; Client ID tanımlanmadıkça giriş hata verir (sahte giriş yok) |
+| Microsoft girişi | Client ID tanımlı; kod yazıldı ama gerçek hesapla henüz test edilmedi. Minecraft servisleri için Mojang uygulama onayı gerekebilir (aşağıya bak) |
 | Marka (TankClient), ikon | Tamam |
 | Veri klasörü ve TANKmc-Data taşıması | Yazıldı, mantığı bu ortamda test edildi (aşağıya bak) |
 | Kurulumlu (NSIS) ve portable EXE yapılandırması | Hazır, derlenmedi |
@@ -59,7 +59,8 @@ Eski klasör hiçbir koşulda silinmez veya taşınmaz. Kopya önce geçici klas
 
 1. [Azure Portal](https://portal.azure.com) → App registrations → New registration. Hesap türü: *Personal Microsoft accounts only*.
 2. Authentication → *Allow public client flows* = Yes.
-3. Application (client) ID değerini `electron/config.ts` içine yaz veya `TANK_CLIENT_ID` ortam değişkeniyle ver. Client ID gizli bir bilgi değildir.
+3. Application (client) ID değeri `electron/config.ts` içindedir (gizli değildir). Kendi kaydını kullanacaksan oraya yaz veya `TANK_CLIENT_ID` ortam değişkeniyle ver.
+   Authentication → *Supported account types* kişisel Microsoft hesaplarını içermelidir.
 4. Mojang, Minecraft servislerini yalnızca onaylı uygulamalara açıyor. https://aka.ms/AppRegReview formunu doldur; onaydan önce giriş 403 hatası verebilir.
 
 Oturum, Windows DPAPI (Electron `safeStorage`) ile şifrelenerek saklanır; şifreleme kullanılamıyorsa diske yazılmaz.

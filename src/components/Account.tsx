@@ -16,7 +16,7 @@ export default function Account({ toast }: { toast: (m: string) => void }) {
   const logout = async () => { await api?.logout(); setU(null) }
   return (<>
     <div className="me">
-      <div className="av">{u ? <img alt="" src={`https://crafatar.com/avatars/${u.uuid}?size=64&overlay`} /> : <svg viewBox="0 0 8 8" shapeRendering="crispEdges"><rect width="8" height="8" fill="#3a3d44" /><rect x="3" y="2" width="2" height="2" fill="#8c9097" /><rect x="2" y="5" width="4" height="3" fill="#8c9097" /></svg>}</div>
+      <div className="av">{u ? <img alt="" src={`https://crafatar.com/avatars/${u.uuid}?size=64&overlay`} onError={e => { const i = e.currentTarget; if (!i.dataset.fb) { i.dataset.fb = '1'; i.src = `https://mc-heads.net/avatar/${u.uuid}/64` } }} /> : <svg viewBox="0 0 8 8" shapeRendering="crispEdges"><rect width="8" height="8" fill="#3a3d44" /><rect x="3" y="2" width="2" height="2" fill="#8c9097" /><rect x="2" y="5" width="4" height="3" fill="#8c9097" /></svg>}</div>
       <div style={{ flex: 1, minWidth: 0 }}><b>{u ? u.name : 'Oyuncu'}</b>
         {u ? <small><span className="pd" />Java Edition sahibi · <a className="lnk" onClick={logout}>Çıkış</a></small>
           : <small><a className="lnk" onClick={login}>Microsoft ile giriş yap</a></small>}</div>
