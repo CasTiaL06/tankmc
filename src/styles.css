@@ -118,3 +118,16 @@ input[type=range]{accent-color:var(--or);width:230px}
 .gal{display:flex;gap:8px;overflow-x:auto}.gal img{height:130px;border-radius:10px;flex:none}
 .upb{color:var(--ok)!important;font-weight:700}
 .cv img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}.card:hover .cv img{transform:scale(1.07)}
+aside{min-height:0}
+.profs{flex:1;min-height:0;overflow:auto;margin:16px 0 12px;padding-top:14px;border-top:1px solid var(--ln)}
+.profs h4{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--mu);margin:0 8px 10px}
+.ptiles{display:flex;flex-wrap:wrap;gap:8px;padding:2px 4px 6px}
+.pt{all:unset;cursor:pointer;width:44px;height:44px;border-radius:12px;overflow:hidden;border:2px solid transparent;background:var(--s3);transition:.2s;display:grid;place-items:center;box-sizing:border-box}
+.pt:hover{transform:translateY(-2px) scale(1.06);border-color:var(--ln)}
+.pt.on{border-color:var(--or);box-shadow:0 0 14px rgba(255,106,26,.5)}
+.pt.add{border:2px dashed var(--ln);color:var(--mu);font-size:20px;background:none}.pt.add:hover{color:var(--or2);border-color:var(--or)}
+.pi{width:100%;height:100%;object-fit:cover;display:block}.pi svg{width:100%;height:100%;display:block}
+.pg{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.pc{cursor:pointer}.pc.sel{border-color:var(--or);box-shadow:0 0 0 1px rgba(255,106,26,.35)}
+.pico{height:150px;position:relative;overflow:hidden;background:var(--s3)}.pico .pi{transition:transform .5s}.pc:hover .pico .pi{transform:scale(1.07)}
+.pico::after{content:"";position:absolute;inset:auto 0 0;height:50%;background:linear-gradient(transparent,var(--s1))}

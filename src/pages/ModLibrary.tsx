@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { scene, Biome } from '../lib/scene'
+import NewProfile from '../components/NewProfile'
 import type { Game } from '../lib/useGame'
+import type { Profiles } from '../lib/useProfiles'
 
 const CATS: [string, string][] = [['', 'Tümü'], ['adventure', 'Macera'], ['decoration', 'Dekorasyon'], ['equipment', 'Ekipman'], ['food', 'Yemek'], ['game-mechanics', 'Oyun mekaniği'], ['library', 'Kütüphane'], ['magic', 'Büyü'], ['mobs', 'Yaratıklar'], ['optimization', 'Performans'], ['storage', 'Depolama'], ['technology', 'Teknoloji'], ['transportation', 'Ulaşım'], ['utility', 'Araçlar'], ['worldgen', 'Dünya üretimi']]
 const CN = Object.fromEntries(CATS)
@@ -14,23 +16,9 @@ const ls = (k: string) => { try { return localStorage.getItem(k) } catch { retur
 function Thumb({ src, name }: { src: string | null; name: string }) {
   return src ? <img className="th" alt="" src={src} loading="lazy" /> : <div className="th" dangerouslySetInnerHTML={{ __html: scene(hash(name) % 997, BIOMES[hash(name) % 6]) }} />
 }
-function NewProfile({ vers, onCreate, onClose }: { vers: string[]; onCreate: (n: string, mc: string, ld: string) => void; onClose: () => void }) {
-  const [name, setName] = useState(''), [mc, setMc] = useState(vers[0] ?? ''), [ld, setLd] = useState('fabric')
-  return (
-    <div className="ov" onClick={onClose}><div className="mdl f" onClick={e => e.stopPropagation()}>
-      <h3>Yeni profil</h3>
-      <input className="fi" placeholder="Profil adı" maxLength={40} value={name} onChange={e => setName(e.target.value)} />
-      {vers.length ? <select className="fi" value={mc} onChange={e => setMc(e.target.value)}>{vers.map(v => <option key={v}>{v}</option>)}</select>
-        : <input className="fi" placeholder="Minecraft sürümü (örn. 1.21.4)" value={mc} onChange={e => setMc(e.target.value)} />}
-      <select className="fi" value={ld} onChange={e => setLd(e.target.value)}>{LD.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <div className="acts"><button className="btn g" onClick={onClose}>İptal</button><button className="btn" disabled={!name.trim() || !mc.trim()} onClick={() => onCreate(name, mc.trim(), ld)}>OLUŞTUR</button></div>
-    </div></div>
-  )
-}
-
-export default function ModLibrary({ toast, g }: { toast: (m: string) => void; g: Game }) {
+export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void; g: Game; p: Profiles }) {
   const api = window.tank?.mods
-  const [insts, setInsts] = useState<Inst[] | null>(null), [selId, setSelId] = useState(ls('tc.inst') ?? '')
+  const { insts, setInsts, selId, setSelId } = p
   const [tab, setTab] = useState<'mod' | 'modpack' | 'installed'>('mod')
   const [q, setQ] = useState(''), [cat, setCat] = useState(''), [sort, setSort] = useState('relevance'), [compat, setCompat] = useState(true)
   const [hits, setHits] = useState<ModHit[]>([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(false)
@@ -39,7 +27,6 @@ export default function ModLibrary({ toast, g }: { toast: (m: string) => void; g
   const seq = useRef(0)
   const inst = insts?.find(i => i.id === selId) ?? insts?.[0]
 
-  useEffect(() => { api?.instances().then(r => { if (r.ok) setInsts(r.instances) }) }, [])
   const run = (offset: number) => {
     if (!api || tab === 'installed') return
     const my = ++seq.current, c = compat && tab === 'mod' ? inst : undefined

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('tank', {
     installPack: (p: string) => ipcRenderer.invoke('mods:installPack', p),
     open: (u: string) => ipcRenderer.invoke('app:open', u),
   },
+  news: { get: () => ipcRenderer.invoke('news:get') },
   servers: {
     list: () => ipcRenderer.invoke('servers:list'),
     save: (l: unknown) => ipcRenderer.invoke('servers:save', l),
@@ -32,7 +33,7 @@ contextBridge.exposeInMainWorld('tank', {
   },
   game: {
     versions: () => ipcRenderer.invoke('game:versions'),
-    play: (id: string, address?: string) => ipcRenderer.invoke('game:play', id, address),
+    play: (id: string, address?: string, profileId?: string) => ipcRenderer.invoke('game:play', id, address, profileId),
     onProgress: (cb: (p: { text: string; pct: number }) => void) => sub('game:progress', cb),
     onState: (cb: (s: { state: string; message?: string }) => void) => sub('game:state', cb),
   },

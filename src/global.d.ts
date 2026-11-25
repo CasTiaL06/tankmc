@@ -5,7 +5,8 @@ interface SrvEntry { id: string; name: string; address: string; desc: string; fa
 interface ModHit { id: string; slug: string; title: string; desc: string; icon: string | null; author: string; downloads: number; follows: number; cats: string[]; loaders: string[]; cover: string | null; type: string }
 interface ModProject { id: string; title: string; desc: string; gallery: { url: string; title: string }[]; links: { label: string; url: string }[]; license: string; downloads: number; client: string; server: string; loaders: string[] }
 interface ModRec { projectId: string; versionId: string; title: string; version: string; file: string; icon: string | null; enabled: boolean; dep: boolean }
-interface Inst { id: string; name: string; mc: string; loader: string; mods: ModRec[]; pack?: { projectId: string; versionId: string } }
+interface Inst { id: string; name: string; mc: string; loader: string; mods: ModRec[]; icon?: string | null; pack?: { projectId: string; versionId: string } }
+interface NewsItem { title: string; version: string; type: string; text: string; image: string | null; date: string | null }
 interface ModUpdate { projectId: string; from: string; to: string }
 type Rr<T = object> = ({ ok: true } & T) | { ok: false; error: string }
 interface ModsApi {
@@ -22,13 +23,13 @@ interface ModsApi {
   installPack(p: string): Promise<Rr<{ instance: Inst }>>
   open(u: string): Promise<void>
 }
-interface Window { tank?: { platform: string; mods: ModsApi; servers: {
+interface Window { tank?: { platform: string; news: { get(): Promise<Rr<{ news: NewsItem[] }>> }; mods: ModsApi; servers: {
   list(): Promise<SrvEntry[]>; save(l: SrvEntry[]): Promise<SrvEntry[]>; ping(address: string): Promise<PingRes> }; settings: {
   get(): Promise<{ settings: AppSettings; maxRamMb: number; defaultGameDir: string }>
   set(s: AppSettings): Promise<AppSettings>
   pick(kind: 'java' | 'folder'): Promise<string | null> }; game: {
   versions(): Promise<{ ok: true; versions: string[] } | { ok: false; error: string }>
-  play(id: string, address?: string): Promise<{ ok: boolean; error?: string }>
+  play(id: string, address?: string, profileId?: string): Promise<{ ok: boolean; error?: string }>
   onProgress(cb: (p: { text: string; pct: number }) => void): () => void
   onState(cb: (s: { state: string; message?: string }) => void): () => void }; auth: {
   restore(): Promise<AuthResult>; login(): Promise<AuthResult>; cancel(): Promise<void>; logout(): Promise<void>

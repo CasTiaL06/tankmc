@@ -9,6 +9,7 @@ import * as servers from './serverlist'
 import { ping } from './mcping'
 import * as mr from './modrinth'
 import * as mi from './modinstall'
+import * as news from './news'
 
 // Taşınabilir sürüm: veri exe'nin yanındaki TankClient-Data klasöründe. Kurulumlu sürüm: %APPDATA%\TankClient.
 // Eski TANKmc-Data / TANKmc verisi varsa kopyalanır (eskisi silinmez).
@@ -34,21 +35,28 @@ ipcMain.handle('auth:login', async () => {
 ipcMain.handle('auth:cancel', () => auth.cancelLogin())
 ipcMain.handle('auth:logout', () => auth.logout())
 ipcMain.handle('game:versions', async () => { try { return { ok: true, versions: await game.listVersions() } } catch (e) { return { ok: false, error: 'Sürüm listesi alınamadı: ' + (e as Error).message } } })
-ipcMain.handle('game:play', (_e, id: unknown, address: unknown) => {
-  if (typeof id !== 'string' || !/^[\w.\-]{1,40}$/.test(id)) return { ok: false, error: 'Geçersiz sürüm.' }
+ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unknown) => {
   if (game.busy()) return { ok: false, error: 'Oyun zaten hazırlanıyor veya çalışıyor.' }
+  let version = id, profileDir: string | undefined
+  if (profileId != null) {
+    const p = typeof profileId === 'string' ? mi.loadAll(mctx()).find(x => x.id === profileId) : undefined
+    if (!p) return { ok: false, error: 'Profil bulunamadı.' }
+    if (p.loader !== 'vanilla') return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
+    version = p.mc; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
+  }
+  if (typeof version !== 'string' || !/^[\w.\-]{1,40}$/.test(version)) return { ok: false, error: 'Geçersiz sürüm.' }
   let join: { host: string; port: number | null } | undefined
   if (address != null) {
     join = typeof address === 'string' ? servers.parseAddress(address) ?? undefined : undefined
     if (!join) return { ok: false, error: 'Geçersiz sunucu adresi.' }
   }
   const cfg = settings.sanitize(settings.load(data.dir), maxRam())
-  void game.play(id, (ch, p) => {
+  void game.play(version, (ch, p) => {
     win.webContents.send(ch, p)
     const st = ch === 'game:state' ? (p as { state: string }).state : ''
     if (st === 'running' && cfg.minimizeOnLaunch) win.minimize()
     if ((st === 'exited' || st === 'error') && win.isMinimized()) { win.restore(); win.focus() }
-  }, cfg, join)
+  }, cfg, join, profileDir)
   return { ok: true }
 })
 
@@ -71,6 +79,7 @@ ipcMain.handle('servers:ping', async (_e, address: unknown) => {
 // Mod kütüphanesi (Modrinth). Ağ ve dosya işlemleri yalnızca ana süreçte yapılır; renderer'a ham erişim verilmez.
 const h = (ch: string, fn: (...a: any[]) => unknown) => ipcMain.handle(ch, async (_e, ...a) => { try { return { ok: true, ...(await fn(...a) as object) } } catch (e) { return { ok: false, error: (e as Error).message } } })
 const mctx = () => ({ root: data.dir, api: { getJson: mr.getJson, getBytes: (u: string) => mr.getBytes(u) } })
+h('news:get', () => news.latest().then(items => ({ news: items })))
 h('mods:search', (o: unknown) => mr.search(o as any))
 h('mods:project', (id: unknown) => mr.project(String(id)))
 h('mods:instances', () => ({ instances: mi.loadAll(mctx()) }))

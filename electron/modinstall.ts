@@ -6,7 +6,7 @@ import { safeJoin } from './launchargs'
 import { readZip } from './zip'
 
 export interface ModRec { projectId: string; versionId: string; title: string; version: string; file: string; icon: string | null; enabled: boolean; dep: boolean }
-export interface Instance { id: string; name: string; mc: string; loader: string; mods: ModRec[]; pack?: { projectId: string; versionId: string } }
+export interface Instance { id: string; name: string; mc: string; loader: string; mods: ModRec[]; icon?: string | null; pack?: { projectId: string; versionId: string } }
 export interface Api { getJson(p: string, params?: Record<string, string | number>): Promise<any>; getBytes(url: string): Promise<Buffer> }
 export interface Ctx { root: string; api: Api }
 
@@ -14,6 +14,7 @@ const ID = /^[\w-]{1,64}$/, FILE = /^[\w.+() \[\]-]{1,150}\.jar$/, MC = /^[\w.\-
 const LOADER_SET = ['vanilla', ...LOADERS]
 const listFile = (c: Ctx) => path.join(c.root, 'instances.json')
 const instDir = (c: Ctx, id: string) => safeJoin(path.join(c.root, 'instances'), id)
+export const profileDir = (c: Ctx, id: string) => instDir(c, id)
 const modsDir = (c: Ctx, i: Instance) => path.join(instDir(c, i.id), 'mods')
 
 function clean(x: any): Instance | null {
@@ -21,7 +22,7 @@ function clean(x: any): Instance | null {
   const mods: ModRec[] = (Array.isArray(x.mods) ? x.mods : []).filter((m: any) => m && ID.test(String(m.projectId)) && FILE.test(String(m.file))).slice(0, 2000).map((m: any) => ({
     projectId: m.projectId, versionId: String(m.versionId ?? '').slice(0, 64), title: String(m.title ?? m.file).slice(0, 80), version: String(m.version ?? '').slice(0, 40), file: m.file,
     icon: typeof m.icon === 'string' && m.icon.startsWith('https://cdn.modrinth.com/') ? m.icon : null, enabled: m.enabled !== false, dep: m.dep === true }))
-  return { id: x.id, name: x.name.slice(0, 40), mc: x.mc, loader: x.loader, mods, pack: x.pack && ID.test(String(x.pack.projectId)) ? { projectId: x.pack.projectId, versionId: String(x.pack.versionId ?? '').slice(0, 64) } : undefined }
+  return { id: x.id, name: x.name.slice(0, 40), mc: x.mc, loader: x.loader, mods, icon: typeof x.icon === 'string' && x.icon.startsWith('https://cdn.modrinth.com/') ? x.icon : null, pack: x.pack && ID.test(String(x.pack.projectId)) ? { projectId: x.pack.projectId, versionId: String(x.pack.versionId ?? '').slice(0, 64) } : undefined }
 }
 export function loadAll(c: Ctx): Instance[] {
   try { const r = JSON.parse(fs.readFileSync(listFile(c), 'utf8')); return Array.isArray(r) ? r.map(clean).filter((x): x is Instance => !!x) : [] } catch { return [] }
@@ -123,7 +124,8 @@ export const installModpack = (c: Ctx, pid: string) => lock(async () => {
   if (!MC.test(mc)) throw new Error('Paket Minecraft sürümünü belirtmiyor')
   const loader = d['fabric-loader'] ? 'fabric' : d['quilt-loader'] ? 'quilt' : d.neoforge ? 'neoforge' : d.forge ? 'forge' : 'vanilla'
   const l = loadAll(c); if (l.length >= 50) throw new Error('En fazla 50 profil oluşturulabilir')
-  const inst: Instance = { id: crypto.randomUUID(), name: String(j.name ?? 'Mod paketi').trim().slice(0, 40) || 'Mod paketi', mc, loader, mods: [], pack: { projectId: pid, versionId: String(ver.id).slice(0, 64) } }
+  const pj = await c.api.getJson('/project/' + pid).catch(() => null) // ikon ve ad için; alınamazsa paket yine kurulur
+  const inst: Instance = { id: crypto.randomUUID(), name: String(j.name ?? pj?.title ?? 'Mod paketi').trim().slice(0, 40) || 'Mod paketi', mc, loader, mods: [], icon: typeof pj?.icon_url === 'string' && pj.icon_url.startsWith('https://cdn.modrinth.com/') ? pj.icon_url : null, pack: { projectId: pid, versionId: String(ver.id).slice(0, 64) } }
   const dir = instDir(c, inst.id); fs.mkdirSync(dir, { recursive: true })
   try {
     const files = j.files.filter((f: any) => f?.env?.client !== 'unsupported'); let k = 0

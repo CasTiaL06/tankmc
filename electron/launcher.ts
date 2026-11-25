@@ -50,7 +50,7 @@ async function ensureJava(component: string, step: (t: string, p: number) => voi
   fs.writeFileSync(ok, ''); return exe
 }
 
-export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }) {
+export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string) {
   running = true
   rootDir = cfg.gameDir || path.join(app.getPath('userData'), 'minecraft')
   const step = (text: string, pct: number) => emit('game:progress', { text, pct })
@@ -91,13 +91,14 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
     const nd = path.join(vdir, 'natives'); fs.mkdirSync(nd, { recursive: true })
     for (const j of natives) await new Promise<void>((res, rej) => execFile('tar', ['-xf', j, '-C', nd], e => e ? rej(new Error('Native dosyalar açılamadı: ' + e.message)) : res()))
 
-    const v = { auth_player_name: s.name, version_name: id, game_directory: R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
+    const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
     const [w, h] = cfg.resolution.split('x')
     const args = [`-Xmx${cfg.ramMb}M`, ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : []), ...(join ? joinArgs(vj, join.host, join.port) : [])]
     step('Minecraft başlatılıyor…', 0.95)
     const logDir = path.join(app.getPath('userData'), 'logs'); fs.mkdirSync(logDir, { recursive: true })
     const log = fs.createWriteStream(path.join(logDir, `game-${Date.now()}.log`)) // erişim token'ı günlüğe yazılmaz
-    const p = spawn(java, args, { cwd: R, windowsHide: true })
+    if (profileDir) fs.mkdirSync(profileDir, { recursive: true })
+    const p = spawn(java, args, { cwd: profileDir ?? R, windowsHide: true })
     let up = false
     const mark = () => { if (!up) { up = true; emit('game:state', { state: 'running' }) } }
     const on = (b: Buffer) => { log.write(b); if (/Setting user:|LWJGL|Backend library/.test(b.toString())) mark() }
