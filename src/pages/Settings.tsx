@@ -7,7 +7,9 @@ const Toggle = ({ on, set }: { on: boolean; set?: (v: boolean) => void }) =>
 const Row = ({ t, s, children }: { t: string; s?: string; children: React.ReactNode }) =>
   <div className="set"><div>{t}{s && <small>{s}</small>}</div>{children}</div>
 
-export default function Settings() {
+import type { Upd } from '../lib/useUpdate'
+
+export default function Settings({ upd }: { upd: Upd }) {
   const api = window.tank?.settings
   const [tab, setTab] = useState<typeof TABS[number]>('Oyun')
   const [s, setS] = useState<AppSettings | null>(null), [maxRam, setMaxRam] = useState(16384), [defDir, setDefDir] = useState('')
@@ -42,8 +44,10 @@ export default function Settings() {
         {tab === 'Klasörler' && <>
           <Row t="Minecraft klasörü" s="Yeni dosyalar buraya indirilir; mevcut dosyalar taşınmaz"><div className="row"><input type="text" readOnly title={s.gameDir || defDir} value={s.gameDir || defDir} /><button className="btn g" onClick={pickDir}>Seç…</button>{s.gameDir && <button className="btn g" onClick={() => up({ gameDir: '' })}>Varsayılan</button>}</div></Row></>}
         {tab === 'Launcher' && <>
+          <Row t="Otomatik güncelleme" s="Açılışta yeni sürüm olup olmadığını kontrol eder (GitHub Releases)"><Toggle on={s.autoUpdate} set={v => up({ autoUpdate: v })} /></Row>
+          <Row t="Beta sürümlerini dahil et" s="Önizleme (pre-release) sürümleri de önerilir"><Toggle on={s.betaUpdates} set={v => up({ betaUpdates: v })} /></Row>
+          <Row t="Güncellemeler" s={upd.statusText}><button className="btn g" disabled={upd.state.phase === 'checking' || upd.state.phase === 'downloading' || !upd.state.repoSet} onClick={() => void upd.check()}>ŞİMDİ KONTROL ET</button></Row>
           <Row t="Oyun açılınca küçült" s="Oyun kapanınca launcher geri gelir"><Toggle on={s.minimizeOnLaunch} set={v => up({ minimizeOnLaunch: v })} /></Row>
-          <Row t="Otomatik güncelleme" s="Güncelleme sistemi eklenince etkinleşecek"><Toggle on={false} /></Row>
           <Row t="Windows ile başlat" s="Henüz desteklenmiyor"><Toggle on={false} /></Row></>}
       </div>
     </section>

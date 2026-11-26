@@ -11,11 +11,27 @@ let cur: Session | null = null, cancelled = false
 const file = () => path.join(app.getPath('userData'), 'session.bin')
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const pub = (s: Session): PublicUser => ({ name: s.name, uuid: s.uuid })
+// Giriş adımları logs/auth.log dosyasına yazılır (belirteç/şifre asla yazılmaz); sorun giderme için.
+function log(m: string) {
+  try {
+    const d = path.join(app.getPath('userData'), 'logs'), f = path.join(d, 'auth.log'); fs.mkdirSync(d, { recursive: true })
+    if (fs.existsSync(f) && fs.statSync(f).size > 500_000) fs.rmSync(f)
+    fs.appendFileSync(f, `${new Date().toISOString()} ${m}\n`)
+  } catch { /* günlük yazılamadı */ }
+}
 
 async function call(url: string, init: RequestInit) {
-  const r = await fetch(url, init)
+  const u = new URL(url); let r: Response
+  try { r = await fetch(url, { ...init, signal: AbortSignal.timeout(20000) }) }
+  catch (e) {
+    const x = e as Error; log(`AĞ HATASI ${u.hostname}: ${x.name} ${x.message}`)
+    throw new Error(`${u.hostname} ${x.name === 'TimeoutError' ? 'zaman aşımına uğradı' : 'adresine bağlanılamadı'}. İnternet bağlantını, güvenlik duvarını veya VPN/proxy ayarlarını kontrol et.`)
+  }
   const t: any = await r.json().catch(() => ({}))
-  if (!r.ok) throw Object.assign(new Error(t.error_description || t.error || t.Message || 'HTTP ' + r.status), { data: t, status: r.status })
+  if (!r.ok) {
+    log(`HTTP ${r.status} ${u.hostname}${u.pathname} ${t.error ?? ''} ${t.XErr ?? ''} ${String(t.error_description ?? t.Message ?? t.errorMessage ?? '').replace(/\s+/g, ' ').slice(0, 200)}`)
+    throw Object.assign(new Error(t.error_description || t.error || t.Message || 'HTTP ' + r.status), { data: t, status: r.status })
+  }
   return t
 }
 const form = (url: string, b: Record<string, string>) => call(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(b) })
@@ -34,32 +50,45 @@ export function friendly(e: unknown): string {
   return x?.message ?? 'Bilinmeyen giriş hatası.'
 }
 
-async function finish(t: any): Promise<PublicUser> {
+async function finish(t: any, step: (s: string) => void = () => {}): Promise<PublicUser> {
+  step('Xbox Live hesabı doğrulanıyor…'); log('Xbox Live')
   const xbl = await json('https://user.auth.xboxlive.com/user/authenticate', { Properties: { AuthMethod: 'RPS', SiteName: 'user.auth.xboxlive.com', RpsTicket: 'd=' + t.access_token }, RelyingParty: 'http://auth.xboxlive.com', TokenType: 'JWT' })
+  step('Xbox güvenlik belirteci alınıyor…'); log('XSTS')
   const xsts = await json('https://xsts.auth.xboxlive.com/xsts/authorize', { Properties: { SandboxId: 'RETAIL', UserTokens: [xbl.Token] }, RelyingParty: 'rp://api.minecraftservices.com/', TokenType: 'JWT' })
+  step('Minecraft’a giriş yapılıyor…'); log('Minecraft login_with_xbox')
   const mc = await json('https://api.minecraftservices.com/authentication/login_with_xbox', { identityToken: `XBL3.0 x=${xsts.DisplayClaims.xui[0].uhs};${xsts.Token}` })
+  step('Minecraft sahipliği ve profil kontrol ediliyor…'); log('Minecraft profil')
   const prof = await call('https://api.minecraftservices.com/minecraft/profile', { headers: { Authorization: 'Bearer ' + mc.access_token } })
   cur = { name: prof.name, uuid: prof.id, mcToken: mc.access_token, mcExpires: Date.now() + mc.expires_in * 1000, refresh: t.refresh_token }
+  log('Giriş başarılı: ' + prof.name)
   // Oturum yalnızca işletim sistemi şifrelemesi (DPAPI) varsa diske yazılır; yoksa sadece bellekte tutulur.
   if (safeStorage.isEncryptionAvailable()) fs.writeFileSync(file(), safeStorage.encryptString(JSON.stringify(cur)))
   return pub(cur)
 }
 
-export async function login(onCode: (c: { userCode: string; url: string }) => void): Promise<PublicUser> {
+let busy = false
+export async function login(onCode: (c: { userCode: string; url: string }) => void, onStep: (t: string) => void = () => {}): Promise<PublicUser> {
   if (!CLIENT_ID) throw new Error('Azure Client ID tanımlı değil (README’deki adımlara bak).')
-  cancelled = false
-  const dc = await form(MS + '/devicecode', { client_id: CLIENT_ID, scope: SCOPE })
-  onCode({ userCode: dc.user_code, url: dc.verification_uri })
-  if (/^https:\/\//.test(String(dc.verification_uri))) void shell.openExternal(dc.verification_uri)
-  let wait = (dc.interval || 5) * 1000
-  const end = Date.now() + dc.expires_in * 1000
-  while (Date.now() < end) {
-    await sleep(wait)
-    if (cancelled) throw new Error('cancel')
-    try { return await finish(await form(MS + '/token', { grant_type: 'urn:ietf:params:oauth:grant-type:device_code', client_id: CLIENT_ID, device_code: dc.device_code })) }
-    catch (e) { const c = (e as any).data?.error; if (c === 'authorization_pending') continue; if (c === 'slow_down') { wait += 5000; continue } throw e }
-  }
-  throw new Error('Giriş süresi doldu.')
+  if (busy) throw new Error('Giriş zaten sürüyor.')
+  busy = true; cancelled = false
+  try {
+    log('Giriş başlatıldı'); onStep('Microsoft’a bağlanılıyor…')
+    const dc = await form(MS + '/devicecode', { client_id: CLIENT_ID, scope: SCOPE })
+    log('Cihaz kodu alındı'); onCode({ userCode: dc.user_code, url: dc.verification_uri }); onStep('Tarayıcıda kodu girmen bekleniyor…')
+    if (/^https:\/\//.test(String(dc.verification_uri))) void shell.openExternal(dc.verification_uri)
+    let wait = (dc.interval || 5) * 1000
+    const end = Date.now() + dc.expires_in * 1000
+    while (Date.now() < end) {
+      await sleep(wait)
+      if (cancelled) throw new Error('cancel')
+      let tok: any
+      try { tok = await form(MS + '/token', { grant_type: 'urn:ietf:params:oauth:grant-type:device_code', client_id: CLIENT_ID, device_code: dc.device_code }) }
+      catch (e) { const c = (e as any).data?.error; if (c === 'authorization_pending') continue; if (c === 'slow_down') { wait += 5000; continue } throw e }
+      log('Microsoft girişi tamamlandı'); return await finish(tok, onStep)
+    }
+    throw new Error('Giriş süresi doldu. Tekrar dene.')
+  } catch (e) { if ((e as Error).message !== 'cancel') log('HATA: ' + (e as Error).message); throw e }
+  finally { busy = false }
 }
 export const cancelLogin = () => { cancelled = true }
 

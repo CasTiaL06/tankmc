@@ -48,7 +48,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="$GITHUB_REF_NAME"
-          files=(release/TankClient-Setup-*.exe release/TankClient-Portable-*.exe)
+          # SHA-256 özeti: uygulamadaki güncelleyici indirdiği dosyayı bununla doğrular
+          (cd release && sha256sum TankClient-Setup-*.exe TankClient-Portable-*.exe > TankClient-SHA256.txt)
+          files=(release/TankClient-Setup-*.exe release/TankClient-Portable-*.exe release/TankClient-SHA256.txt)
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "${files[@]}" --clobber
           else

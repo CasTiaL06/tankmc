@@ -1,30 +1,19 @@
-import { useEffect, useState } from 'react'
+import type { Auth } from '../lib/useAuth'
 
-export default function Account({ toast }: { toast: (m: string) => void }) {
-  const [u, setU] = useState<{ name: string; uuid: string } | null>(null)
-  const [code, setCode] = useState<{ userCode: string; url: string } | null>(null)
-  const api = window.tank?.auth
-  useEffect(() => {
-    api?.restore().then(r => { if (r.ok) setU(r.user); else if (r.error) toast(r.error) }).catch(() => {})
-    return api?.onCode(setCode)
-  }, [])
-  const login = async () => {
-    if (!api) return toast('Microsoft girişi yalnızca masaüstü uygulamasında çalışır.')
-    const r = await api.login(); setCode(null)
-    if (r.ok) { setU(r.user); toast('Hoş geldin, ' + r.user.name) } else if (r.error !== 'cancel') toast(r.error)
-  }
-  const logout = async () => { await api?.logout(); setU(null) }
+export default function Account({ auth }: { auth: Auth }) {
+  const { user: u, flow } = auth
   return (<>
     <div className="me">
       <div className="av">{u ? <img alt="" src={`https://crafatar.com/avatars/${u.uuid}?size=64&overlay`} onError={e => { const i = e.currentTarget; if (!i.dataset.fb) { i.dataset.fb = '1'; i.src = `https://mc-heads.net/avatar/${u.uuid}/64` } }} /> : <svg viewBox="0 0 8 8" shapeRendering="crispEdges"><rect width="8" height="8" fill="#3a3d44" /><rect x="3" y="2" width="2" height="2" fill="#8c9097" /><rect x="2" y="5" width="4" height="3" fill="#8c9097" /></svg>}</div>
       <div style={{ flex: 1, minWidth: 0 }}><b>{u ? u.name : 'Oyuncu'}</b>
-        {u ? <small><span className="pd" />Java Edition sahibi · <a className="lnk" onClick={logout}>Çıkış</a></small>
-          : <small><a className="lnk" onClick={login}>Microsoft ile giriş yap</a></small>}</div>
+        {u ? <small><span className="pd" />Java Edition sahibi · <a className="lnk" onClick={() => void auth.logout()}>Çıkış</a></small>
+          : <small><a className="lnk" onClick={() => void auth.login()}>Microsoft ile giriş yap</a></small>}</div>
     </div>
-    {code && <div className="ov"><div className="mdl"><h3>Microsoft ile giriş</h3>
-      <p>Tarayıcı açıldı. Açılmadıysa <b>{code.url}</b> adresine git ve bu kodu gir:</p>
-      <div className="code" onClick={() => navigator.clipboard?.writeText(code.userCode)} title="Kopyala">{code.userCode}</div>
-      <p className="st">Giriş tamamlanana kadar bekleniyor…</p>
-      <button className="btn g" onClick={() => window.tank?.auth.cancel()}>İptal</button></div></div>}
+    {flow && <div className="ov"><div className="mdl"><h3>Microsoft ile giriş</h3>
+      {flow.code ? <>
+        <p>Tarayıcı açıldı. Açılmadıysa <b>{flow.code.url}</b> adresine git ve bu kodu gir:</p>
+        <div className="code" title="Kopyala" onClick={() => navigator.clipboard?.writeText(flow.code!.userCode)}>{flow.code.userCode}</div></> : <div className="spin" />}
+      <p className="st">{flow.step}</p>
+      <button className="btn g" onClick={auth.cancel}>İptal</button></div></div>}
   </>)
 }

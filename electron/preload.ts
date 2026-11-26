@@ -20,6 +20,21 @@ contextBridge.exposeInMainWorld('tank', {
     installPack: (p: string) => ipcRenderer.invoke('mods:installPack', p),
     open: (u: string) => ipcRenderer.invoke('app:open', u),
   },
+  update: {
+    state: () => ipcRenderer.invoke('update:state'),
+    check: () => ipcRenderer.invoke('update:check'),
+    download: () => ipcRenderer.invoke('update:download'),
+    apply: () => ipcRenderer.invoke('update:apply'),
+    notes: () => ipcRenderer.invoke('update:notes'),
+    onState: (cb: (s: unknown) => void) => sub('update:state', cb),
+  },
+  downloads: {
+    list: () => ipcRenderer.invoke('downloads:list'),
+    cancel: (id: string) => ipcRenderer.invoke('downloads:cancel', id),
+    clear: () => ipcRenderer.invoke('downloads:clear'),
+    onUpdate: (cb: (t: unknown[]) => void) => sub('downloads:update', cb),
+  },
+  stats: { get: () => ipcRenderer.invoke('stats:get') },
   news: { get: () => ipcRenderer.invoke('news:get') },
   servers: {
     list: () => ipcRenderer.invoke('servers:list'),
@@ -42,6 +57,7 @@ contextBridge.exposeInMainWorld('tank', {
     login: () => ipcRenderer.invoke('auth:login'),
     cancel: () => ipcRenderer.invoke('auth:cancel'),
     logout: () => ipcRenderer.invoke('auth:logout'),
+    onStep: (cb: (t: string) => void) => sub('auth:step', cb),
     onCode: (cb: (c: { userCode: string; url: string }) => void) => {
       const h = (_: unknown, c: { userCode: string; url: string }) => cb(c)
       ipcRenderer.on('auth:code', h)

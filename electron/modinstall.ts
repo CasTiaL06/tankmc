@@ -7,7 +7,7 @@ import { readZip } from './zip'
 
 export interface ModRec { projectId: string; versionId: string; title: string; version: string; file: string; icon: string | null; enabled: boolean; dep: boolean }
 export interface Instance { id: string; name: string; mc: string; loader: string; mods: ModRec[]; icon?: string | null; pack?: { projectId: string; versionId: string } }
-export interface Api { getJson(p: string, params?: Record<string, string | number>): Promise<any>; getBytes(url: string): Promise<Buffer> }
+export interface Api { getJson(p: string, params?: Record<string, string | number>): Promise<any>; getBytes(url: string, size?: number): Promise<Buffer> }
 export interface Ctx { root: string; api: Api }
 
 const ID = /^[\w-]{1,64}$/, FILE = /^[\w.+() \[\]-]{1,150}\.jar$/, MC = /^[\w.\-]{1,40}$/
@@ -38,7 +38,7 @@ function pickFile(ver: any) {
   if (!f || !isAllowedUrl(f.url)) throw new Error('Güvenli indirme adresi bulunamadı')
   const name = String(f.filename).replace(/[^\w.+() \[\]-]/g, '_')
   if (!FILE.test(name)) throw new Error('Geçersiz dosya adı: ' + f.filename)
-  return { url: f.url as string, name, hashes: f.hashes }
+  return { url: f.url as string, name, hashes: f.hashes, size: Number.isFinite(f.size) ? (f.size as number) : undefined }
 }
 
 export const createInstance = (c: Ctx, name: string, mc: string, loader: string) => lock(async () => {
@@ -59,7 +59,7 @@ async function add(c: Ctx, i: Instance, pid: string, ver: any, dep: boolean, w: 
   if (i.mods.length >= 300) throw new Error('Profil mod sınırına ulaştı (300)')
   const f = pickFile(ver)
   if (i.mods.some(m => m.file === f.name)) throw new Error('Aynı adlı başka bir mod dosyası zaten var: ' + f.name)
-  const buf = await c.api.getBytes(f.url); verifyHash(buf, f.hashes)
+  const buf = await c.api.getBytes(f.url, f.size); verifyHash(buf, f.hashes)
   const dir = modsDir(c, i); fs.mkdirSync(dir, { recursive: true })
   const dest = safeJoin(dir, f.name); fs.writeFileSync(dest, buf); w.files.push(dest)
   const p = await c.api.getJson('/project/' + pid)
@@ -102,7 +102,7 @@ export const updateMod = (c: Ctx, instId: string, pid: string) => lock(async () 
   const { l, i } = get(c, instId), m = rec(i, pid)
   const ver = pickVersion(await versionsFor(c, i, pid)); if (!ver) throw new Error('Uyumlu sürüm bulunamadı')
   const f = pickFile(ver); if (f.name !== m.file && i.mods.some(x => x.file === f.name)) throw new Error('Aynı adlı başka bir mod dosyası var')
-  const buf = await c.api.getBytes(f.url); verifyHash(buf, f.hashes)
+  const buf = await c.api.getBytes(f.url, f.size); verifyHash(buf, f.hashes)
   const dir = modsDir(c, i), sfx = m.enabled ? '' : '.disabled', dest = safeJoin(dir, f.name + sfx), old = safeJoin(dir, m.file + sfx)
   fs.writeFileSync(dest, buf); if (old !== dest) fs.rmSync(old, { force: true })
   m.versionId = String(ver.id).slice(0, 64); m.version = String(ver.version_number ?? '').slice(0, 40); m.file = f.name; commit(c, l); return { instance: i }
@@ -115,7 +115,7 @@ export const installModpack = (c: Ctx, pid: string) => lock(async () => {
   const ver = pickVersion(vers.filter(v => v.files?.some((f: any) => /\.mrpack$/i.test(f.filename))))
   const pf = ver?.files.find((f: any) => /\.mrpack$/i.test(f.filename))
   if (!pf || !isAllowedUrl(pf.url)) throw new Error('Bu mod paketinin .mrpack dosyası bulunamadı')
-  const zbuf = await c.api.getBytes(pf.url); verifyHash(zbuf, pf.hashes)
+  const zbuf = await c.api.getBytes(pf.url, Number.isFinite(pf.size) ? pf.size : undefined); verifyHash(zbuf, pf.hashes)
   const entries = readZip(zbuf), idx = entries.find(e => e.name === 'modrinth.index.json')
   if (!idx) throw new Error('Paket dizin dosyası (modrinth.index.json) yok')
   const j = JSON.parse(idx.read().toString('utf8'))
@@ -132,7 +132,7 @@ export const installModpack = (c: Ctx, pid: string) => lock(async () => {
     await Promise.all(Array.from({ length: 6 }, async () => { while (k < files.length) {
       const f = files[k++], url = (f.downloads ?? []).find((u: unknown) => isAllowedUrl(u))
       if (!url || typeof f.path !== 'string') throw new Error('Pakette güvenli indirme adresi olmayan dosya var')
-      const dest = safeJoin(dir, f.path), buf = await c.api.getBytes(url); verifyHash(buf, f.hashes)
+      const dest = safeJoin(dir, f.path), buf = await c.api.getBytes(url, Number.isFinite(f.fileSize) ? f.fileSize : undefined); verifyHash(buf, f.hashes)
       fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, buf)
       const nm = path.basename(f.path)
       if (/^mods\/[^/]+\.jar$/i.test(f.path) && FILE.test(nm)) inst.mods.push({ projectId: 'file-' + String(f.hashes?.sha1 ?? crypto.randomUUID()).replace(/[^\w]/g, '').slice(0, 12), versionId: '', title: nm.replace(/\.jar$/i, ''), version: '', file: nm, icon: null, enabled: true, dep: false })

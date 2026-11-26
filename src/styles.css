@@ -131,3 +131,17 @@ aside{min-height:0}
 .pc{cursor:pointer}.pc.sel{border-color:var(--or);box-shadow:0 0 0 1px rgba(255,106,26,.35)}
 .pico{height:150px;position:relative;overflow:hidden;background:var(--s3)}.pico .pi{transition:transform .5s}.pc:hover .pico .pi{transform:scale(1.07)}
 .pico::after{content:"";position:absolute;inset:auto 0 0;height:50%;background:linear-gradient(transparent,var(--s1))}
+.spin{width:34px;height:34px;border:3px solid var(--s3);border-top-color:var(--or);border-radius:50%;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.pl{display:grid;grid-template-columns:260px 1fr;gap:28px;align-items:start}
+.skin{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 18px;border-radius:20px;border:1px solid var(--ln);background:radial-gradient(260px 220px at 50% 25%,rgba(255,106,26,.22),transparent 70%),var(--s1);text-align:center}
+.skin .body{height:230px;width:auto;max-width:100%;object-fit:contain;filter:drop-shadow(0 12px 22px rgba(0,0,0,.6));image-rendering:pixelated}
+.skin .ghost{display:grid;place-items:center;width:120px;height:230px;font-size:60px;color:var(--s3)}
+.pname{font-size:22px;font-weight:800}
+.uuid{font:11px Consolas,monospace;color:var(--mu);cursor:pointer;word-break:break-all}.uuid:hover{color:var(--or2)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tile{padding:18px;border-radius:16px;background:var(--s1);border:1px solid var(--ln);display:flex;flex-direction:column;gap:4px;border-top:2px solid var(--or)}
+.tile b{font-size:24px}.tile span{color:var(--mu);font-size:12px}
+.bdg{margin-left:auto;background:var(--or);color:#1a0a02;font-size:11px;font-weight:800;border-radius:99px;padding:1px 7px}
+.dbar{height:6px;background:var(--s3);border-radius:9px;overflow:hidden}.dbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--or),var(--or2));transition:width .3s}
+.dbar.ind i{width:35%;animation:ind 1.2s ease-in-out infinite alternate}@keyframes ind{to{margin-left:65%}}
+.upd{position:sticky;top:0;z-index:6;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 38px;background:linear-gradient(90deg,rgba(255,106,26,.28),rgba(14,14,16,.92) 70%);border-bottom:1px solid var(--or);backdrop-filter:blur(8px)}

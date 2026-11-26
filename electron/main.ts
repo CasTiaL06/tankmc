@@ -10,6 +10,13 @@ import { ping } from './mcping'
 import * as mr from './modrinth'
 import * as mi from './modinstall'
 import * as news from './news'
+import * as stats from './stats'
+import { Downloads } from './downloads'
+import * as up from './updater'
+import { UPDATE_REPO } from './config'
+import { readBody } from './fetchbytes'
+import fs from 'fs'
+import { spawn } from 'child_process'
 
 // Taşınabilir sürüm: veri exe'nin yanındaki TankClient-Data klasöründe. Kurulumlu sürüm: %APPDATA%\TankClient.
 // Eski TANKmc-Data / TANKmc verisi varsa kopyalanır (eskisi silinmez).
@@ -18,6 +25,9 @@ const data = resolveDataDir({ portableDir: process.env.PORTABLE_EXECUTABLE_DIR, 
 app.setPath('userData', data.dir)
 
 let win: BrowserWindow
+// İndirme merkezi: değişiklikler en fazla ~3 kez/sn arayüze iletilir
+let dlPending = false
+const dl = new Downloads(data.dir, () => { if (dlPending) return; dlPending = true; setTimeout(() => { dlPending = false; win?.webContents.send('downloads:update', dl.list()) }, 300) })
 function createWindow() {
   win = new BrowserWindow({
     width: 1280, height: 800, minWidth: 960, minHeight: 620,
@@ -29,7 +39,7 @@ function createWindow() {
 }
 ipcMain.handle('auth:restore', async () => { const r = await auth.restore(); return r.user ? { ok: true, user: r.user } : { ok: false, error: r.notice ?? '' } })
 ipcMain.handle('auth:login', async () => {
-  try { return { ok: true, user: await auth.login(c => win.webContents.send('auth:code', c)) } }
+  try { return { ok: true, user: await auth.login(c => win.webContents.send('auth:code', c), t => win.webContents.send('auth:step', t)) } }
   catch (e) { return { ok: false, error: auth.friendly(e) } }
 })
 ipcMain.handle('auth:cancel', () => auth.cancelLogin())
@@ -37,12 +47,12 @@ ipcMain.handle('auth:logout', () => auth.logout())
 ipcMain.handle('game:versions', async () => { try { return { ok: true, versions: await game.listVersions() } } catch (e) { return { ok: false, error: 'Sürüm listesi alınamadı: ' + (e as Error).message } } })
 ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unknown) => {
   if (game.busy()) return { ok: false, error: 'Oyun zaten hazırlanıyor veya çalışıyor.' }
-  let version = id, profileDir: string | undefined, loader: string | undefined
+  let version = id, profileDir: string | undefined, loader: string | undefined, profileName: string | undefined
   if (profileId != null) {
     const p = typeof profileId === 'string' ? mi.loadAll(mctx()).find(x => x.id === profileId) : undefined
     if (!p) return { ok: false, error: 'Profil bulunamadı.' }
     if (!['vanilla', 'fabric', 'quilt'].includes(p.loader)) return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
-    version = p.mc; loader = p.loader; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
+    version = p.mc; loader = p.loader; profileName = p.name; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
   }
   if (typeof version !== 'string' || !/^[\w.\-]{1,40}$/.test(version)) return { ok: false, error: 'Geçersiz sürüm.' }
   let join: { host: string; port: number | null } | undefined
@@ -51,12 +61,16 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
     if (!join) return { ok: false, error: 'Geçersiz sunucu adresi.' }
   }
   const cfg = settings.sanitize(settings.load(data.dir), maxRam())
+  const label = profileName ? `${profileName} · ${version}` : `Vanilla ${version}`; let started = 0
+  const t = dl.start('game', `Minecraft ${version}${loader && loader !== 'vanilla' ? ' · ' + loader : ''}${profileName ? ' · ' + profileName : ''}`)
   void game.play(version, (ch, p) => {
     win.webContents.send(ch, p)
     const st = ch === 'game:state' ? (p as { state: string }).state : ''
+    if (st === 'running') started = Date.now()
+    if ((st === 'exited' || st === 'error') && started) { stats.record(data.dir, { start: started, end: Date.now(), label, version }); started = 0 }
     if (st === 'running' && cfg.minimizeOnLaunch) win.minimize()
     if ((st === 'exited' || st === 'error') && win.isMinimized()) { win.restore(); win.focus() }
-  }, cfg, join, profileDir, loader)
+  }, cfg, join, profileDir, loader, t)
   return { ok: true }
 })
 
@@ -79,21 +93,85 @@ ipcMain.handle('servers:ping', async (_e, address: unknown) => {
 // Mod kütüphanesi (Modrinth). Ağ ve dosya işlemleri yalnızca ana süreçte yapılır; renderer'a ham erişim verilmez.
 const h = (ch: string, fn: (...a: any[]) => unknown) => ipcMain.handle(ch, async (_e, ...a) => { try { return { ok: true, ...(await fn(...a) as object) } } catch (e) { return { ok: false, error: (e as Error).message } } })
 const mctx = () => ({ root: data.dir, api: { getJson: mr.getJson, getBytes: (u: string) => mr.getBytes(u) } })
+// Mod/paket işlemleri indirme merkezinde görevdir: ilerleme, hız ve iptal buradan yönetilir
+const withTask = async (kind: 'mod' | 'pack', title: string, run: (c: mi.Ctx) => Promise<any>, name: (r: any) => string) => {
+  const t = dl.start(kind, title)
+  try {
+    const r = await run({ root: data.dir, api: { getJson: mr.getJson, getBytes: async (u: string, size?: number) => {
+      t.expect(size ?? 0, 1); const b = await mr.getBytes(u, 300_000_000, { signal: t.signal, onBytes: n => t.bytes(n) }); t.fileDone(); return b } } })
+    t.finish(name(r)); return r
+  } catch (e) { t.fail(t.cancelled ? 'İptal edildi' : (e as Error).message); throw e }
+}
+// Otomatik güncelleme (GitHub Releases). İndirilen dosya SHA-256 ile doğrulanır; kurulum yalnızca kullanıcı onayıyla başlar.
+interface UState { phase: 'idle' | 'checking' | 'uptodate' | 'available' | 'downloading' | 'ready' | 'error'; current: string; mode: 'portable' | 'installed'; repoSet: boolean; version?: string; notes?: string; prerelease?: boolean; canAuto?: boolean; page?: string; error?: string; file?: string }
+let ust: UState = { phase: 'idle', current: app.getVersion(), mode: data.mode, repoSet: !!UPDATE_REPO }
+let pendingUpdate: { release: up.Release; asset: up.Asset | null } | null = null
+const setU = (p: Partial<UState>) => { ust = { ...ust, ...p }; win?.webContents.send('update:state', ust) }
+const gh = async (u: string) => { const r = await fetch(u, { headers: { 'User-Agent': mr.UA, Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error(r.status === 404 ? 'Depo veya sürüm bulunamadı (depo herkese açık mı?)' : r.status === 403 ? 'GitHub istek sınırına ulaşıldı, biraz sonra tekrar dene' : `GitHub hatası (${r.status})`); return r }
+async function checkUpdate() {
+  if (!UPDATE_REPO) return setU({ phase: 'error', error: 'Güncelleme deposu tanımlı değil (README).' })
+  if (ust.phase === 'downloading' || ust.phase === 'ready') return
+  setU({ phase: 'checking', error: undefined })
+  try {
+    const cfg = settings.sanitize(settings.load(data.dir), maxRam())
+    const r = await up.checkForUpdate({ repo: UPDATE_REPO, current: app.getVersion(), beta: cfg.betaUpdates, mode: data.mode }, { getJson: async u => (await gh(u)).json() })
+    if (!r) { pendingUpdate = null; return setU({ phase: 'uptodate', version: undefined, canAuto: undefined }) }
+    pendingUpdate = r; setU({ phase: 'available', version: r.release.version, notes: r.release.notes, prerelease: r.release.prerelease, canAuto: !!r.asset, page: r.release.page })
+  } catch (e) { setU({ phase: 'error', error: (e as Error).message }) }
+}
+async function downloadUpdate() {
+  const p = pendingUpdate
+  if (!p || !p.asset || ust.phase !== 'available') throw new Error('İndirilecek güncelleme yok')
+  const a = p.asset, t = dl.start('update', `TankClient ${p.release.version} güncellemesi`)
+  setU({ phase: 'downloading', error: undefined })
+  try {
+    const want = await up.expectedHash(p.release, a, async u => (await gh(u)).text())
+    t.expect(a.size, 1)
+    const r = await fetch(a.url, { headers: { 'User-Agent': mr.UA }, signal: AbortSignal.any([AbortSignal.timeout(900000), t.signal]) })
+    if (!r.ok) throw new Error(`İndirme hatası (${r.status})`)
+    const buf = await readBody(r, n => t.bytes(n), 400_000_000)
+    up.verifySha256(buf, want)
+    // Portable: yeni EXE mevcut EXE'nin yanına; yazılamazsa (veya kurulumlu) veri klasöründeki updates altına
+    const fallback = path.join(data.dir, 'updates', a.name); let dest = data.mode === 'portable' && process.env.PORTABLE_EXECUTABLE_DIR ? path.join(process.env.PORTABLE_EXECUTABLE_DIR, a.name) : fallback
+    try { fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, buf) } catch { dest = fallback; fs.mkdirSync(path.dirname(dest), { recursive: true }); fs.writeFileSync(dest, buf) }
+    t.fileDone(); t.finish(); setU({ phase: 'ready', file: dest })
+  } catch (e) {
+    const msg = t.cancelled ? 'Güncelleme indirmesi iptal edildi.' : (e as Error).message
+    t.fail(msg); setU({ phase: 'available', error: msg })
+  }
+}
+function applyUpdate() {
+  const f = ust.file
+  if (ust.phase !== 'ready' || !f || !fs.existsSync(f)) throw new Error('Hazır güncelleme yok')
+  const env = { ...process.env }; for (const k of Object.keys(env)) if (k.startsWith('PORTABLE_EXECUTABLE')) delete env[k]
+  spawn(f, [], { detached: true, stdio: 'ignore', env }).unref(); app.quit() // kurulumlu: kurulum sihirbazı, portable: yeni sürüm açılır
+}
+h('update:state', () => ({ state: ust }))
+h('update:check', async () => { await checkUpdate(); return { state: ust } })
+h('update:download', async () => { await downloadUpdate(); return { state: ust } })
+h('update:apply', () => { applyUpdate(); return {} })
+h('update:notes', () => { if (ust.page && ust.page.startsWith(`https://github.com/${UPDATE_REPO}/`)) void shell.openExternal(ust.page); return {} })
+h('downloads:list', () => ({ tasks: dl.list() }))
+h('downloads:cancel', (id: unknown) => ({ cancelled: dl.cancel(String(id)) }))
+h('downloads:clear', () => { dl.clear(); return {} })
+h('stats:get', () => ({ stats: stats.summarize(stats.loadSessions(data.dir)) }))
 h('news:get', () => news.latest().then(items => ({ news: items })))
 h('mods:search', (o: unknown) => mr.search(o as any))
 h('mods:project', (id: unknown) => mr.project(String(id)))
 h('mods:instances', () => ({ instances: mi.loadAll(mctx()) }))
 h('mods:create', (n: unknown, mc: unknown, ld: unknown) => mi.createInstance(mctx(), String(n), String(mc), String(ld)))
 h('mods:delete', (id: unknown) => mi.deleteInstance(mctx(), String(id)))
-h('mods:install', (i: unknown, p: unknown) => mi.installMod(mctx(), String(i), String(p)))
+h('mods:install', (i: unknown, p: unknown) => withTask('mod', 'Mod kuruluyor…', c => mi.installMod(c, String(i), String(p)), r => `Mod: ${r.installed.join(', ') || 'zaten kurulu'}`))
 h('mods:uninstall', (i: unknown, p: unknown) => mi.removeMod(mctx(), String(i), String(p)))
 h('mods:toggle', (i: unknown, p: unknown) => mi.toggleMod(mctx(), String(i), String(p)))
 h('mods:check', (i: unknown) => mi.checkUpdates(mctx(), String(i)))
-h('mods:update', (i: unknown, p: unknown) => mi.updateMod(mctx(), String(i), String(p)))
-h('mods:installPack', (p: unknown) => mi.installModpack(mctx(), String(p)))
+h('mods:update', (i: unknown, p: unknown) => withTask('mod', 'Mod güncelleniyor…', c => mi.updateMod(c, String(i), String(p)), () => 'Mod güncellendi'))
+h('mods:installPack', (p: unknown) => withTask('pack', 'Mod paketi kuruluyor…', c => mi.installModpack(c, String(p)), r => `Mod paketi: ${r.instance.name}`))
 ipcMain.handle('app:open', (_e, u: unknown) => { if (typeof u === 'string' && /^https:\/\/(modrinth\.com|github\.com)\//.test(u)) void shell.openExternal(u) })
 app.whenReady().then(() => {
   if (data.migrationError) dialog.showErrorBox('TankClient', `Eski veriler (TANKmc) yeni klasöre kopyalanamadı. Eski klasörün yerinde duruyor, hiçbir veri silinmedi.\n\n${data.migrationError}`)
   createWindow()
+  try { fs.rmSync(path.join(data.dir, 'updates'), { recursive: true, force: true }) } catch { /* yok say */ } // önceki güncelleme dosyaları
+  setTimeout(() => { if (UPDATE_REPO && settings.load(data.dir).autoUpdate) void checkUpdate() }, 8000)
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

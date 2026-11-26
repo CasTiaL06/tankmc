@@ -13,12 +13,15 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 | Microsoft girişi | Client ID tanımlı; gerçek hesapla test edilmedi, Minecraft servisleri için Mojang uygulama onayı gerekir |
 | Vanilla başlatma (1.8.9+; resmî manifest, kütüphane/asset indirme, SHA1 doğrulama, Mojang Java) | Yazıldı; argüman mantığı test edildi, gerçek oyunla denenmedi |
 | Fabric ve Quilt başlatma (resmî meta API, modlar profil klasöründen yüklenir) | Yazıldı; birleştirme mantığı test edildi, gerçek oyunla denenmedi |
-| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült) | Kalıcı ve oyun başlarken uygulanır; otomatik güncelleme ve Windows ile başlat yok (kapalı gösterilir) |
+| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült, otomatik güncelleme) | Kalıcı ve uygulanır; Windows ile başlat yok (kapalı gösterilir) |
 | Sunucular (ekle/düzenle/sil, favori, arama, detay, canlı durum, katıl) | Durum ve oyuncu sayısı sunucudan okunur; gerçek sunucuyla denenmedi |
 | Mod Kütüphanesi (Modrinth: arama, kategori, uyumluluk, bağımlılıklar, etkinleştir/devre dışı, güncelleme, .mrpack mod paketleri) | Kurulum mantığı sahte API ile test edildi; gerçek Modrinth ile denenmedi |
 | Kütüphane ve profiller, Minecraft haberleri | Yazıldı; arayüz denenmedi |
 | EXE (kurulumlu + portable) ve GitHub Actions | Derleme adımı çalıştı; Release yükleme `gh` ile yapılır |
-| Forge ve NeoForge ile başlatma, indirme merkezi, oyuncu profili sayfası, otomatik güncelleme | Henüz yok |
+| Oyuncu sayfası (gerçek skin görüntüsü, hesap bilgisi, TankClient ile oynanan gerçek süre ve geçmiş) | Yazıldı; arayüz denenmedi |
+| İndirme merkezi (Minecraft, mod ve mod paketi indirmeleri: ilerleme, hız, kalan süre, iptal, geçmiş, hata) | Yazıldı; takip mantığı test edildi, gerçek indirmeyle denenmedi |
+| Otomatik güncelleme (GitHub Releases: sürüm karşılaştırma, SHA-256 doğrulama, indirme merkezinde izleme, kurulumlu ve portable) | Yazıldı; karar mantığı test edildi, gerçek release ile denenmedi; `UPDATE_REPO` tanımlanmalı |
+| Forge ve NeoForge ile başlatma | Henüz yok |
 
 ## Geliştirme
 
@@ -57,6 +60,15 @@ Kaldırma işlemi kullanıcı verisini **silmez**. Portable'ı başka bilgisayar
 - Kurulumlu/geliştirme: `%APPDATA%\TANKmc`.
 
 Eski klasör hiçbir koşulda silinmez veya taşınmaz. Kopya önce geçici klasöre yapılır; yarım kalırsa sonraki açılışta yeniden denenir, başarısız olursa bir hata penceresi çıkar.
+
+## Otomatik güncelleme
+1. `electron/config.ts` içindeki `UPDATE_REPO` değerine herkese açık deponu yaz (`kullanici/depo`) veya `TANK_UPDATE_REPO` ortam değişkenini ver. Boşsa güncelleme kontrolü kapalıdır.
+2. Yeni sürüm için `v0.2.0` gibi bir etiket gönder; iş akışı `TankClient-Setup-0.2.0.exe`, `TankClient-Portable-0.2.0.exe` ve `TankClient-SHA256.txt` dosyalarını release'e ekler.
+3. Uygulama açılışta (Ayarlar → Launcher'dan kapatılabilir) ve elle kontrol eder; daha yüksek sürüm bulursa üstte bildirim çıkar. **Güncelle** indirmeyi başlatır (İndirmeler sayfasında izlenir), SHA-256 doğrulanır, **Yeniden başlat** ile kurulur: kurulumlu sürümde kurulum sihirbazı, portable sürümde yeni EXE (eskisinin yanına indirilir) açılır. Veri klasörün korunur.
+4. Doğrulama özeti olmayan (eski) sürümler otomatik kurulmaz; sürüm sayfası bağlantısı gösterilir. Beta (pre-release) sürümler ayarda açıksa dahil edilir.
+
+## Giriş sorun giderme
+Giriş adımları `logs/auth.log` dosyasına yazılır (belirteç yazılmaz): portable sürümde `TankClient-Data\logs\auth.log`, kurulumlu sürümde `%APPDATA%\TankClient\logs\auth.log`. Sorun bildirirken bu dosyanın son satırlarını paylaş.
 
 ## Microsoft girişi için kurulum (ücretsiz)
 

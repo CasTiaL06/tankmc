@@ -4,6 +4,14 @@ import ModLibrary from './pages/ModLibrary'
 import Servers from './pages/Servers'
 import Settings from './pages/Settings'
 import Account from './components/Account'
+import Player from './pages/Player'
+import Downloads from './pages/Downloads'
+import UpdateBanner from './components/UpdateBanner'
+import { useUpdate } from './lib/useUpdate'
+import { useDownloads } from './lib/useDownloads'
+import { fmtSpeed } from './lib/fmt'
+import type { Dl } from './lib/useDownloads'
+import { useAuth } from './lib/useAuth'
 import ProfileIcon from './components/ProfileIcon'
 import NewProfile from './components/NewProfile'
 import Library from './pages/Library'
@@ -11,13 +19,15 @@ import { useProfiles } from './lib/useProfiles'
 import { useGame, Game } from './lib/useGame'
 
 const ICONS: Record<string, string> = {
+  downloads: '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
+  player: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
   library: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>',
   home: '<path d="M3 11l9-8 9 8v10H3z"/><path d="M9 21v-7h6v7"/>',
   servers: '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>',
   packs: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
 }
-const NAV = [['home', 'Ana Sayfa'], ['library', 'Kütüphane'], ['servers', 'Sunucular'], ['packs', 'Mod Kütüphanesi'], ['settings', 'Ayarlar']] as const
+const NAV = [['home', 'Ana Sayfa'], ['library', 'Kütüphane'], ['servers', 'Sunucular'], ['packs', 'Mod Kütüphanesi'], ['downloads', 'İndirmeler'], ['player', 'Oyuncu'], ['settings', 'Ayarlar']] as const
 type Page = typeof NAV[number][0]
 
 // Ana sayfa: Modrinth'in gerçek en çok indirilen modları (çevrimdışıysa gösterilmez)
@@ -48,7 +58,7 @@ function News() {
   </>)
 }
 
-function Home({ go, g }: { go: (p: Page) => void; g: Game }) {
+function Home({ go, g, dl }: { go: (p: Page) => void; g: Game; dl: Dl }) {
   const [ldr, setLdr] = useState('Vanilla')
   const iso = useMemo(isoHero, [])
   return (
@@ -63,7 +73,7 @@ function Home({ go, g }: { go: (p: Page) => void; g: Game }) {
             <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(v => <option key={v} disabled={v !== 'Vanilla'}>{v}{v !== 'Vanilla' ? ' (profil ile)' : ''}</option>)}</select>
           </div>
           <div className={'bar' + (g.prog ? ' on' : '')}><i style={{ width: (g.prog ? g.prog.pct * 100 : 0) + '%' }} /></div>
-          <div className="st">{g.prog?.text}</div>
+          <div className="st">{g.prog?.text}{(() => { const a = dl.active.find(x => x.kind === 'game'); return a ? <>{a.speed > 0 && ` · ${fmtSpeed(a.speed)}`} · <a className="lnk" onClick={() => dl.cancel(a.id)}>İptal et</a></> : null })()}</div>
         </div>
       </div>
       <Featured go={go} />
@@ -74,9 +84,12 @@ function Home({ go, g }: { go: (p: Page) => void; g: Game }) {
 
 export default function App() {
   const [page, setPage] = useState<Page>('home'), [msg, setMsg] = useState(''), tm = useRef<number>()
-  const toast = (m: string) => { setMsg(m); clearTimeout(tm.current); tm.current = window.setTimeout(() => setMsg(''), 3200) }
+  const toast = (m: string) => { setMsg(m); clearTimeout(tm.current); tm.current = window.setTimeout(() => setMsg(''), Math.max(3200, m.length * 70)) }
   useEffect(() => () => clearTimeout(tm.current), [])
   const g = useGame(toast)
+  const auth = useAuth(toast)
+  const dl = useDownloads()
+  const upd = useUpdate()
   const p = useProfiles(), [newP, setNewP] = useState(false)
   const idx = NAV.findIndex(n => n[0] === page)
   return (
@@ -84,7 +97,7 @@ export default function App() {
       <aside>
         <div className="brand"><svg width="36" height="36" viewBox="0 0 40 40"><path d="M20 2l16 9v18l-16 9L4 29V11z" fill="#18191c" stroke="#ff6a1a" strokeWidth="2.5" /><path d="M11 14h18v5h-6.5v11h-5V19H11z" fill="#ff6a1a" /></svg><span>Tank<b>Client</b></span></div>
         <nav><div className="ind" style={{ transform: `translateY(${idx * 48}px)` }} />
-          {NAV.map(([k, n]) => <button key={k} className={k === page ? 'on' : ''} onClick={() => setPage(k)}><svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: ICONS[k] }} />{n}</button>)}</nav>
+          {NAV.map(([k, n]) => <button key={k} className={k === page ? 'on' : ''} onClick={() => setPage(k)}><svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: ICONS[k] }} />{n}{k === 'downloads' && dl.active.length > 0 && <span className="bdg">{dl.active.length}</span>}</button>)}</nav>
         <div className="profs">
           <h4>Profiller</h4>
           <div className="ptiles">
@@ -92,14 +105,17 @@ export default function App() {
             <button className="pt add" title="Yeni profil" onClick={() => setNewP(true)}>+</button>
           </div>
         </div>
-        <Account toast={toast} />
+        <Account auth={auth} />
       </aside>
       <main key={page}>
-        {page === 'home' && <Home go={setPage} g={g} />}
+        <UpdateBanner upd={upd} />
+        {page === 'home' && <Home go={setPage} g={g} dl={dl} />}
         {page === 'library' && <Library toast={toast} g={g} p={p} go={setPage} />}
         {page === 'servers' && <Servers toast={toast} g={g} />}
         {page === 'packs' && <ModLibrary toast={toast} g={g} p={p} />}
-        {page === 'settings' && <Settings />}
+        {page === 'downloads' && <Downloads dl={dl} />}
+        {page === 'player' && <Player auth={auth} />}
+        {page === 'settings' && <Settings upd={upd} />}
       </main>
       {newP && <NewProfile vers={g.vers} onCreate={(n, m, l) => { void p.create(n, m, l).then(e => { if (e) toast(e); else { setNewP(false); setPage('library') } }) }} onClose={() => setNewP(false)} />}
       <div id="toast" className={msg ? 'on' : ''}>{msg}</div>

@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import { readBody } from './fetchbytes'
 
 // Modrinth ücretsiz genel API'si (v2). Her istekte tanımlayıcı User-Agent gönderilir.
 export const UA = 'TankClient/0.1.0 (open-source Minecraft launcher)'
@@ -16,12 +17,13 @@ export async function getJson(p: string, params: Record<string, string | number>
   if (!r.ok) throw new Error(r.status === 404 ? 'Modrinth’te bulunamadı' : r.status === 429 ? 'Modrinth istek sınırına ulaşıldı, biraz bekleyip tekrar dene' : `Modrinth hatası (${r.status})`)
   return r.json()
 }
-export async function getBytes(url: string, max = 300_000_000): Promise<Buffer> {
+export async function getBytes(url: string, max = 300_000_000, opts: { signal?: AbortSignal; onBytes?: (n: number) => void } = {}): Promise<Buffer> {
   if (!isAllowedUrl(url)) throw new Error('İzin verilmeyen indirme adresi')
-  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(180000) })
+  const timeout = AbortSignal.timeout(180000)
+  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout })
   if (!r.ok) throw new Error(`İndirme hatası (${r.status})`)
   if (Number(r.headers.get('content-length') ?? 0) > max) throw new Error('Dosya çok büyük')
-  const b = Buffer.from(await r.arrayBuffer()); if (b.length > max) throw new Error('Dosya çok büyük'); return b
+  return readBody(r, opts.onBytes, max)
 }
 export function verifyHash(buf: Buffer, h?: { sha1?: string; sha512?: string }) {
   const ok = h?.sha512 ? createHash('sha512').update(buf).digest('hex') === h.sha512 : h?.sha1 ? createHash('sha1').update(buf).digest('hex') === h.sha1 : false
