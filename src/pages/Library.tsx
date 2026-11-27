@@ -3,13 +3,14 @@ import ProfileIcon from '../components/ProfileIcon'
 import NewProfile from '../components/NewProfile'
 import type { Game } from '../lib/useGame'
 import type { Profiles } from '../lib/useProfiles'
+import PageHead from '../components/PageHead'
 
 const PLAYABLE = ['vanilla', 'fabric', 'quilt', 'forge', 'neoforge']
 const LN: Record<string, string> = { vanilla: 'Vanilla', fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge', quilt: 'Quilt' }
 
 export default function Library({ toast, g, p, go }: { toast: (m: string) => void; g: Game; p: Profiles; go: (k: 'packs') => void }) {
   const [q, setQ] = useState(''), [form, setForm] = useState(false)
-  if (!window.tank) return <section className="view on"><h1>Kütüphane</h1><p className="sub">Profiller yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
+  if (!window.tank) return <section className="view on"><PageHead title="Kütüphane" sub="Profiller yalnızca masaüstü uygulamasında kullanılabilir." /></section>
   const L = (p.insts ?? []).filter(i => i.name.toLowerCase().includes(q.toLowerCase()))
   const play = (i: Inst) => { toast(`${i.name} başlatılıyor… İlerleme Ana sayfada.`); void g.play(undefined, { version: i.mc, profileId: i.id, name: i.name }) }
   const del = async (i: Inst) => {
@@ -20,7 +21,7 @@ export default function Library({ toast, g, p, go }: { toast: (m: string) => voi
   const canPlay = !g.busy && !g.live
   return (
     <section className="view on">
-      <h1>Kütüphane</h1><p className="sub">Profillerin: her biri kendi sürümü, modları ve dünyalarıyla ayrı çalışır</p>
+      <PageHead title="Kütüphane" sub="Profillerin: her biri kendi sürümü, modları ve dünyalarıyla ayrı çalışır" />
       <div className="tools">
         <label className="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-5-5" /></svg><input value={q} onChange={e => setQ(e.target.value)} placeholder="Profil ara…" /></label>
         <button className="btn" onClick={() => setForm(true)}>+ YENİ PROFİL</button>

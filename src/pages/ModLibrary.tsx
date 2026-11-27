@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { scene, Biome } from '../lib/scene'
 import NewProfile from '../components/NewProfile'
+import VersionPicker from '../components/VersionPicker'
+import { CAT_TR, SIDE } from '../lib/labels'
 import type { Game } from '../lib/useGame'
 import type { Profiles } from '../lib/useProfiles'
+import PageHead from '../components/PageHead'
 
 const CATS: [string, string][] = [['', 'Tümü'], ['adventure', 'Macera'], ['decoration', 'Dekorasyon'], ['equipment', 'Ekipman'], ['food', 'Yemek'], ['game-mechanics', 'Oyun mekaniği'], ['library', 'Kütüphane'], ['magic', 'Büyü'], ['mobs', 'Yaratıklar'], ['optimization', 'Performans'], ['storage', 'Depolama'], ['technology', 'Teknoloji'], ['transportation', 'Ulaşım'], ['utility', 'Araçlar'], ['worldgen', 'Dünya üretimi']]
-const CN = Object.fromEntries(CATS)
+const CN: Record<string, string> = CAT_TR
 const LD: [string, string][] = [['fabric', 'Fabric'], ['forge', 'Forge'], ['neoforge', 'NeoForge'], ['quilt', 'Quilt']]
 const LN: Record<string, string> = { ...Object.fromEntries(LD), vanilla: 'Vanilla' }
 const BIOMES: Biome[] = ['grass', 'nether', 'end', 'snow', 'desert', 'cave']
@@ -16,7 +19,7 @@ const ls = (k: string) => { try { return localStorage.getItem(k) } catch { retur
 function Thumb({ src, name }: { src: string | null; name: string }) {
   return src ? <img className="th" alt="" src={src} loading="lazy" /> : <div className="th" dangerouslySetInnerHTML={{ __html: scene(hash(name) % 997, BIOMES[hash(name) % 6]) }} />
 }
-export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void; g: Game; p: Profiles }) {
+export default function ModLibrary({ toast, g, p, query }: { toast: (m: string) => void; g: Game; p: Profiles; query?: { q: string; n: number } }) {
   const api = window.tank?.mods
   const { insts, setInsts, selId, setSelId } = p
   const [tab, setTab] = useState<'mod' | 'modpack' | 'installed'>('mod')
@@ -24,6 +27,7 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
   const [hits, setHits] = useState<ModHit[]>([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState<Record<string, boolean>>({}), [detail, setDetail] = useState<ModHit | null>(null), [proj, setProj] = useState<ModProject | null>(null)
   const [upd, setUpd] = useState<ModUpdate[]>([]), [form, setForm] = useState(false)
+  const [pick, setPick] = useState<{ hit: ModHit; kind: 'mod' | 'pack'; versions: ModVersion[] | null; rec: string | null; busy: boolean } | null>(null), [pin, setPin] = useState<ModHit | null>(null)
   const seq = useRef(0)
   const inst = insts?.find(i => i.id === selId) ?? insts?.[0]
 
@@ -41,6 +45,9 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
   useEffect(() => { const t = setTimeout(() => run(0), q ? 350 : 0); return () => clearTimeout(t) }, [tab, q, cat, sort, compat, inst?.id, inst?.mc, inst?.loader])
   useEffect(() => { setProj(null); if (detail) api?.project(detail.id).then(r => { if (r.ok) setProj(r.project) }) }, [detail?.id])
   useEffect(() => { setUpd([]) }, [inst?.id])
+  useEffect(() => { if (query?.q) { setTab('mod'); setQ(query.q); setCat('') } }, [query?.n]) // üst çubuktaki arama
+  // Fabulously Optimized her zaman Mod Paketleri sekmesinin başında sabit öne çıkarılır
+  useEffect(() => { if (tab === 'modpack' && api && !pin) api.search({ query: 'Fabulously Optimized', type: 'modpack' }).then(r => { if (r.ok) setPin(r.hits.find(h => h.slug === 'fabulously-optimized') ?? null) }) }, [tab])
   // Uzak görüş (LOD): bu profilin sürümü ve loader'ı için Distant Horizons var mı?
   const [lod, setLod] = useState<ModHit | null | undefined>(undefined)
   useEffect(() => {
@@ -48,7 +55,7 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
     if (!api || !inst || inst.loader === 'vanilla') return
     api.search({ query: 'Distant Horizons', type: 'mod', mc: inst.mc, loader: inst.loader }).then(r => setLod(r.ok ? r.hits.find(h => h.slug === 'distanthorizons') ?? null : undefined))
   }, [inst?.id, inst?.mc, inst?.loader])
-  if (!api) return <section className="view on"><h1>Mod Kütüphanesi</h1><p className="sub">Mod kütüphanesi yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
+  if (!api) return <section className="view on"><PageHead title="Mod Kütüphanesi" sub="Mod kütüphanesi yalnızca masaüstü uygulamasında kullanılabilir." /></section>
 
   const put = (i: Inst) => setInsts(l => (l ? l.map(x => (x.id === i.id ? i : x)) : [i]))
   const flag = (id: string, v: boolean) => setBusy(b => ({ ...b, [id]: v }))
@@ -62,14 +69,14 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
     const r = await api.remove(inst.id); if (!r.ok) return toast(r.error)
     setInsts(l => (l ?? []).filter(x => x.id !== inst.id)); setSelId('')
   }
-  const install = async (h: ModHit) => {
+  const install = async (h: ModHit, versionId?: string) => {
     if (!inst || inst.loader === 'vanilla') { setForm(true); return toast('Önce Fabric, Forge, NeoForge veya Quilt profili oluştur.') }
-    flag(h.id, true); const r = await api.install(inst.id, h.id); flag(h.id, false)
+    flag(h.id, true); const r = await api.install(inst.id, h.id, versionId); flag(h.id, false)
     if (!r.ok) return toast(r.error)
     put(r.instance); toast(r.installed.length ? `Kuruldu: ${r.installed.join(', ')}` : 'Mod zaten kurulu.')
   }
-  const installPack = async (h: ModHit) => {
-    flag(h.id, true); const r = await api.installPack(h.id); flag(h.id, false)
+  const installPack = async (h: ModHit, versionId?: string) => {
+    flag(h.id, true); const r = await api.installPack(h.id, versionId); flag(h.id, false)
     if (!r.ok) return toast(r.error)
     setInsts(l => [...(l ?? []), r.instance]); setSelId(r.instance.id); setTab('installed'); setDetail(null); toast(`“${r.instance.name}” yeni profil olarak kuruldu.`)
   }
@@ -85,15 +92,30 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
     if (!r.ok) return toast(r.error)
     put(r.instance); setUpd(u => u.filter(x => x.projectId !== m.projectId))
   }
+  // Kurmadan önce sürüm seçtirir: mod için profile uyumlu sürümler, paket için paketin sürümleri
+  const ask = async (h: ModHit) => {
+    const kind = h.type === 'modpack' ? 'pack' : 'mod'
+    if (kind === 'mod' && (!inst || inst.loader === 'vanilla')) { setForm(true); return toast('Önce Fabric, Forge, NeoForge veya Quilt profili oluştur.') }
+    setPick({ hit: h, kind, versions: null, rec: null, busy: false })
+    const r = await api.versions(kind, h.id, inst?.id)
+    if (!r.ok) { setPick(null); return toast(r.error) }
+    setPick(x => (x && x.hit.id === h.id ? { ...x, versions: r.versions, rec: r.recommended } : x))
+  }
+  const confirmPick = async (versionId: string) => {
+    const x = pick; if (!x) return
+    setPick({ ...x, busy: true })
+    if (x.kind === 'pack') await installPack(x.hit, versionId); else await install(x.hit, versionId)
+    setPick(null)
+  }
   const actionBtn = (h: ModHit) => tab === 'modpack'
-    ? <button className="btn" disabled={busy[h.id]} onClick={e => { e.stopPropagation(); void installPack(h) }}>{busy[h.id] ? 'KURULUYOR…' : 'PROFİL OLARAK KUR'}</button>
+    ? <button className="btn" disabled={busy[h.id]} onClick={e => { e.stopPropagation(); void ask(h) }}>{busy[h.id] ? 'KURULUYOR…' : 'PROFİL OLARAK KUR'}</button>
     : have.has(h.id) ? <button className="btn ok" onClick={e => e.stopPropagation()}>KURULU ✓</button>
-    : <button className="btn" disabled={busy[h.id]} onClick={e => { e.stopPropagation(); void install(h) }}>{busy[h.id] ? 'KURULUYOR…' : 'KUR'}</button>
-  const spot = tab !== 'installed' && !q && !cat && hits.length > 0 ? hits[0] : null
+    : <button className="btn" disabled={busy[h.id]} onClick={e => { e.stopPropagation(); void ask(h) }}>{busy[h.id] ? 'KURULUYOR…' : 'KUR'}</button>
+  const spot = tab === 'installed' || q || cat ? null : tab === 'modpack' && pin ? pin : hits[0] ?? null
 
   return (
     <section className="view on">
-      <h1>Mod Kütüphanesi</h1><p className="sub">Modrinth’ten mod ve mod paketi keşfet, profillerine kur</p>
+      <PageHead title="Mod Kütüphanesi" sub="Modrinth’ten mod ve mod paketi keşfet, profillerine kur" />
       <div className="pbar">
         {inst ? <>
           <select className="pbsel" value={inst.id} onChange={e => { setSelId(e.target.value); try { localStorage.setItem('tc.inst', e.target.value) } catch { /* yok say */ } }}>{(insts ?? []).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select>
@@ -134,17 +156,18 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
               ? <div className="lodp"><Thumb src={lod.icon} name={lod.title} />
                   <div className="mt"><b>Uzak görüş (LOD): 32 chunk sınırını aşar</b>
                     <span style={{ whiteSpace: 'normal' }}>{lod.title}, uzak araziyi sadeleştirilmiş (LOD) çizerek görüş mesafesini yüzlerce chunk’a çıkarabilir. Performans ve RAM kullanımı artar; uzaklık modun kendi ayarlarından seçilir.</span></div>
-                  {have.has(lod.id) ? <button className="btn ok">KURULU ✓</button> : <button className="btn" disabled={busy[lod.id]} onClick={() => void install(lod)}>{busy[lod.id] ? 'KURULUYOR…' : 'KUR'}</button>}</div>
+                  {have.has(lod.id) ? <button className="btn ok">KURULU ✓</button> : <button className="btn" disabled={busy[lod.id]} onClick={() => void ask(lod)}>{busy[lod.id] ? 'KURULUYOR…' : 'KUR'}</button>}</div>
               : <p className="notice">Bu profilin sürümü ({inst.mc} · {LN[inst.loader]}) için Uzak Görüş (Distant Horizons) bulunamadı.</p>)}
             {spot && <div className="spot" onClick={() => setDetail(spot)}>
               {spot.cover && <img className="bg" alt="" src={spot.cover} />}
               <div className="in"><span className="tag">ÖNE ÇIKAN</span><h2 style={{ fontSize: 26 }}>{spot.title}</h2><p className="st" style={{ margin: 0 }}>{spot.desc}</p>
+                <div className="chips"><span>⬇ {fmt.format(spot.downloads)}</span><span>♥ {fmt.format(spot.follows)}</span></div>
                 <div className="row"><Thumb src={spot.icon} name={spot.title} />{actionBtn(spot)}</div></div></div>}
-            {(spot ? hits.slice(1) : hits).map(h => (
+            {hits.filter(h => h.id !== spot?.id).map(h => (
               <div className="mrow" key={h.id} onClick={() => setDetail(h)}>
                 <Thumb src={h.icon} name={h.title} />
                 <div className="mt"><b>{h.title} <span className="st">· {h.author}</span></b><span>{h.desc}</span>
-                  <span className="chips" style={{ marginTop: 4 }}>{h.loaders.slice(0, 3).map(l => <span key={l}>{LN[l]}</span>)}{h.cats.map(c => <span key={c}>{CN[c] ?? c}</span>)}</span></div>
+                  <span className="chips" style={{ marginTop: 4 }}>{h.loaders.slice(0, 3).map(l => <span key={l}>{LN[l]}</span>)}{h.cats.filter(c => CN[c]).map(c => <span key={c}>{CN[c]}</span>)}</span></div>
                 <span className="st" title="İndirme">⬇ {fmt.format(h.downloads)}</span>
                 {actionBtn(h)}
               </div>))}
@@ -160,13 +183,16 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
         <div className="row"><Thumb src={detail.icon} name={detail.title} /><div><h3>{detail.title}</h3><span className="st">{detail.author} · ⬇ {fmt.format(detail.downloads)} · ♥ {fmt.format(detail.follows)}</span></div></div>
         <p style={{ color: 'var(--mu)' }}>{detail.desc}</p>
         {proj?.gallery.length ? <div className="gal">{proj.gallery.map(x => <img key={x.url} alt={x.title} src={x.url} loading="lazy" />)}</div> : !proj ? <span className="st">Ayrıntılar yükleniyor…</span> : null}
-        <div className="chips">{(proj?.loaders ?? detail.loaders).map(l => <span key={l}>{LN[l]}</span>)}{detail.cats.map(c => <span key={c}>{CN[c] ?? c}</span>)}</div>
+        <div className="chips">{(proj?.loaders ?? detail.loaders).map(l => <span key={l}>{LN[l]}</span>)}{detail.cats.filter(c => CN[c]).map(c => <span key={c}>{CN[c]}</span>)}</div>
         {proj && <>
           <div className="kv"><span>Lisans</span><b>{proj.license || 'belirtilmemiş'}</b></div>
-          <div className="kv"><span>İstemci / Sunucu</span><b>{proj.client} / {proj.server}</b></div>
+          <div className="kv"><span>İstemci / Sunucu</span><b>{SIDE[proj.client] ?? '—'} / {SIDE[proj.server] ?? '—'}</b></div>
           <div className="row" style={{ flexWrap: 'wrap' }}>{proj.links.map(l => <button key={l.url} className="btn g" onClick={() => void api.open(l.url)}>{l.label}</button>)}</div></>}
         <div className="acts" style={{ marginTop: 'auto' }}>{actionBtn(detail)}</div>
       </div>}
+      {pick && <VersionPicker title={`${pick.hit.title}: sürüm seç`}
+        note={pick.kind === 'pack' ? 'Her paket sürümü kendi Minecraft sürümü ve loader’ıyla gelir; yeni bir profil olarak kurulur.' : `Profil: ${inst?.name} (MC ${inst?.mc} · ${LN[inst?.loader ?? ''] ?? ''}). Yalnızca bu profille uyumlu sürümler listelenir.`}
+        versions={pick.versions} recommended={pick.rec} busy={pick.busy} onInstall={v => void confirmPick(v)} onClose={() => { if (!pick.busy) setPick(null) }} />}
       {form && <NewProfile vers={g.vers} onCreate={(n, m, l) => void createProfile(n, m, l)} onClose={() => setForm(false)} />}
     </section>
   )

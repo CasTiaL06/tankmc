@@ -1,5 +1,6 @@
 import type { Dl } from '../lib/useDownloads'
 import { fmtBytes, fmtDur, fmtEta, fmtSpeed } from '../lib/fmt'
+import PageHead from '../components/PageHead'
 
 const KIND = { game: 'Minecraft', mod: 'Mod', pack: 'Mod paketi', update: 'Güncelleme' }
 const when = (t: number) => new Date(t).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
@@ -8,7 +9,7 @@ export default function Downloads({ dl }: { dl: Dl }) {
   const past = dl.tasks.filter(t => t.state !== 'active')
   return (
     <section className="view on">
-      <h1>İndirmeler</h1><p className="sub">Minecraft, mod ve mod paketi indirmeleri</p>
+      <PageHead title="İndirmeler" sub="Minecraft, mod ve mod paketi indirmeleri" />
       <h2 className="sec">Aktif indirmeler</h2>
       {!dl.active.length && <div className="empty">Şu anda aktif indirme yok.</div>}
       {dl.active.map(t => { const pct = t.total > 0 ? Math.min(100, (t.done / t.total) * 100) : null; return (

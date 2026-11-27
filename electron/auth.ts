@@ -5,11 +5,17 @@ import { CLIENT_ID } from './config'
 
 const MS = 'https://login.microsoftonline.com/consumers/oauth2/v2.0'
 const SCOPE = 'XboxLive.signin offline_access'
-export interface Session { name: string; uuid: string; mcToken: string; mcExpires: number; refresh: string }
+export interface Session { name: string; uuid: string; mcToken: string; mcExpires: number; refresh: string; skinUrl?: string | null; slim?: boolean }
 export interface PublicUser { name: string; uuid: string }
 let cur: Session | null = null, cancelled = false
 const file = () => path.join(app.getPath('userData'), 'session.bin')
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+const SKIN_URL = /^https:\/\/textures\.minecraft\.net\/texture\/[0-9a-f]{16,80}$/
+// Etkin skin: kimlik doğrulamalı Minecraft profilinden (üçüncü taraf servis yok); adres yalnızca resmî doku sunucusundan kabul edilir
+function skinOf(prof: any): { url: string | null; slim: boolean } {
+  const sk = ((prof?.skins ?? []) as any[]).find(x => x?.state === 'ACTIVE'), u = typeof sk?.url === 'string' ? sk.url.replace(/^http:/, 'https:') : ''
+  return { url: SKIN_URL.test(u) ? u : null, slim: sk?.variant === 'SLIM' }
+}
 const pub = (s: Session): PublicUser => ({ name: s.name, uuid: s.uuid })
 // Giriş adımları logs/auth.log dosyasına yazılır (belirteç/şifre asla yazılmaz); sorun giderme için.
 function log(m: string) {
@@ -59,7 +65,8 @@ async function finish(t: any, step: (s: string) => void = () => {}): Promise<Pub
   const mc = await json('https://api.minecraftservices.com/authentication/login_with_xbox', { identityToken: `XBL3.0 x=${xsts.DisplayClaims.xui[0].uhs};${xsts.Token}` })
   step('Minecraft sahipliği ve profil kontrol ediliyor…'); log('Minecraft profil')
   const prof = await call('https://api.minecraftservices.com/minecraft/profile', { headers: { Authorization: 'Bearer ' + mc.access_token } })
-  cur = { name: prof.name, uuid: prof.id, mcToken: mc.access_token, mcExpires: Date.now() + mc.expires_in * 1000, refresh: t.refresh_token }
+  const sk = skinOf(prof)
+  cur = { name: prof.name, uuid: prof.id, mcToken: mc.access_token, mcExpires: Date.now() + mc.expires_in * 1000, refresh: t.refresh_token, skinUrl: sk.url, slim: sk.slim }
   log('Giriş başarılı: ' + prof.name)
   // Oturum yalnızca işletim sistemi şifrelemesi (DPAPI) varsa diske yazılır; yoksa sadece bellekte tutulur.
   if (safeStorage.isEncryptionAvailable()) fs.writeFileSync(file(), safeStorage.encryptString(JSON.stringify(cur)))
@@ -107,4 +114,26 @@ export const getSession = () => cur
 export async function ensureSession(): Promise<Session | null> {
   if (!cur || cur.mcExpires < Date.now() + 60000) await restore()
   return cur
+}
+
+let skinCache: { url: string; dataUrl: string } | null = null
+// Oturumdaki hesabın etkin skin PNG'si (data URL). Eski oturumlarda skin bilgisi yoksa profil yeniden okunur.
+export async function getSkin(): Promise<{ dataUrl: string; slim: boolean } | null> {
+  const s = cur; if (!s) return null
+  if (s.skinUrl === undefined) {
+    try {
+      const sk = skinOf(await call('https://api.minecraftservices.com/minecraft/profile', { headers: { Authorization: 'Bearer ' + s.mcToken } }))
+      s.skinUrl = sk.url; s.slim = sk.slim
+      if (safeStorage.isEncryptionAvailable()) fs.writeFileSync(file(), safeStorage.encryptString(JSON.stringify(s)))
+    } catch { return null }
+  }
+  if (!s.skinUrl) return null
+  if (skinCache?.url !== s.skinUrl) {
+    try {
+      const r = await fetch(s.skinUrl, { signal: AbortSignal.timeout(10000) }); if (!r.ok) return null
+      const b = Buffer.from(await r.arrayBuffer()); if (b.length > 200_000) return null
+      skinCache = { url: s.skinUrl, dataUrl: 'data:image/png;base64,' + b.toString('base64') }
+    } catch { return null }
+  }
+  return { dataUrl: skinCache.dataUrl, slim: !!s.slim }
 }

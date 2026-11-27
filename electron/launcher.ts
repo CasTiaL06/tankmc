@@ -56,14 +56,15 @@ async function ensureJava(component: string, step: (t: string, p: number) => voi
   fs.writeFileSync(ok, ''); return exe
 }
 
-export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string, loader?: string, dl?: Handle) {
+export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string, loader?: string, dl?: Handle, offline?: { name: string; uuid: string }) {
   running = true
   rootDir = cfg.gameDir || path.join(app.getPath('userData'), 'minecraft')
   const step = (text: string, pct: number) => emit('game:progress', { text, pct })
   try {
     emit('game:state', { state: 'preparing' })
-    const s = await auth.ensureSession()
-    if (!s) throw new Error('Oynamak için önce Microsoft ile giriş yapmalısın.')
+    const ms = await auth.ensureSession() // çevrimdışı hesap için de sahiplik kanıtı olan bir Microsoft oturumu gerekir
+    if (!ms) throw new Error(offline ? 'Çevrimdışı hesaplar için Minecraft sahibi bir Microsoft hesabı bağlı olmalı.' : 'Oynamak için önce Microsoft ile giriş yapmalısın.')
+    const s: { name: string; uuid: string; mcToken: string } = offline ? { name: offline.name, uuid: offline.uuid, mcToken: '0' } : ms
     const entry = (await manifest()).versions.find((v: any) => v.id === id)
     if (!entry) throw new Error('Bilinmeyen Minecraft sürümü: ' + id)
     const R = root(), vdir = path.join(R, 'versions', id)
@@ -122,7 +123,7 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
     for (const j of natives) await new Promise<void>((res, rej) => execFile('tar', ['-xf', j, '-C', nd], e => e ? rej(new Error('Native dosyalar açılamadı: ' + e.message)) : res()))
 
     dl?.finish() // indirme aşaması bitti
-    const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, library_directory: path.join(R, 'libraries'), classpath_separator: ';', launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
+    const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: offline ? 'legacy' : 'msa', version_type: vj.type, natives_directory: nd, library_directory: path.join(R, 'libraries'), classpath_separator: ';', launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
     const [w, h] = cfg.resolution.split('x')
     const args = [`-Xmx${cfg.ramMb}M`, ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : []), ...(join ? joinArgs(vj, join.host, join.port) : [])]
     step('Minecraft başlatılıyor…', 0.95)

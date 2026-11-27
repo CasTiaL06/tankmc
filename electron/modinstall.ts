@@ -73,10 +73,17 @@ async function add(c: Ctx, i: Instance, pid: string, ver: any, dep: boolean, w: 
     await add(c, i, d.project_id, dv, true, w, depth + 1)
   }
 }
-export const installMod = (c: Ctx, instId: string, pid: string) => lock(async () => {
+export const installMod = (c: Ctx, instId: string, pid: string, versionId?: string) => lock(async () => {
   const { l, i } = get(c, instId)
   if (i.loader === 'vanilla') throw new Error('Vanilla profile mod kurulamaz. Fabric, Forge, NeoForge veya Quilt profili seç.')
-  const ver = pickVersion(await versionsFor(c, i, pid)); if (!ver) throw new Error(`Bu mod ${i.mc} / ${i.loader} ile uyumlu değil`)
+  let ver: any
+  if (versionId) {
+    // Kullanıcının seçtiği sürüm: bu projeye ait ve profilin Minecraft sürümü/loader'ı ile uyumlu olmalı
+    if (!ID.test(versionId)) throw new Error('Geçersiz sürüm kimliği')
+    ver = await c.api.getJson('/version/' + versionId)
+    if (ver?.project_id !== pid || !ver.loaders?.includes(i.loader) || !ver.game_versions?.includes(i.mc) || !ver.files?.length) throw new Error('Seçilen sürüm bu profille uyumlu değil')
+  } else ver = pickVersion(await versionsFor(c, i, pid))
+  if (!ver) throw new Error(`Bu mod ${i.mc} / ${i.loader} ile uyumlu değil`)
   const w: W = { titles: [], files: [] }
   try { await add(c, i, pid, ver, false, w); commit(c, l) } catch (e) { w.files.forEach(f => fs.rmSync(f, { force: true })); throw e }
   return { installed: w.titles, instance: i }
@@ -109,10 +116,12 @@ export const updateMod = (c: Ctx, instId: string, pid: string) => lock(async () 
 })
 
 // .mrpack (Modrinth mod paketi): dizin dosyası + indirmeler + overrides. Her dosya hash ile doğrulanır; adres izin listesine uymak zorundadır.
-export const installModpack = (c: Ctx, pid: string) => lock(async () => {
+export const installModpack = (c: Ctx, pid: string, versionId?: string) => lock(async () => {
   if (!ID.test(pid)) throw new Error('Geçersiz proje kimliği')
   const vers: any[] = await c.api.getJson(`/project/${pid}/version`)
-  const ver = pickVersion(vers.filter(v => v.files?.some((f: any) => /\.mrpack$/i.test(f.filename))))
+  const cand = vers.filter(v => v.files?.some((f: any) => /\.mrpack$/i.test(f.filename)))
+  const ver = versionId ? cand.find(v => v.id === versionId) : pickVersion(cand)
+  if (versionId && !ver) throw new Error('Seçilen paket sürümü bulunamadı')
   const pf = ver?.files.find((f: any) => /\.mrpack$/i.test(f.filename))
   if (!pf || !isAllowedUrl(pf.url)) throw new Error('Bu mod paketinin .mrpack dosyası bulunamadı')
   const zbuf = await c.api.getBytes(pf.url, Number.isFinite(pf.size) ? pf.size : undefined); verifyHash(zbuf, pf.hashes)
@@ -144,3 +153,14 @@ export const installModpack = (c: Ctx, pid: string) => lock(async () => {
     l.push(inst); commit(c, l); return { instance: inst }
   } catch (e) { fs.rmSync(dir, { recursive: true, force: true }); throw e }
 })
+
+// Sürüm seçici için liste: modda profile uyumlu sürümler, pakette .mrpack içeren tüm sürümler (yeniden eskiye)
+export async function listVersions(c: Ctx, kind: 'mod' | 'pack', pid: string, instId?: string) {
+  if (!ID.test(pid)) throw new Error('Geçersiz proje kimliği')
+  let list: any[]
+  if (kind === 'pack') list = (await c.api.getJson(`/project/${pid}/version`)).filter((v: any) => v.files?.some((f: any) => /\.mrpack$/i.test(f.filename)))
+  else list = await versionsFor(c, get(c, instId ?? '').i, pid)
+  const versions = list.slice(0, 60).map(v => ({ id: String(v.id), number: String(v.version_number ?? '').slice(0, 40), type: ['release', 'beta', 'alpha'].includes(v.version_type) ? v.version_type : 'release',
+    date: String(v.date_published ?? '').slice(0, 10), mc: (Array.isArray(v.game_versions) ? v.game_versions : []).slice(0, 6).map(String), loaders: (Array.isArray(v.loaders) ? v.loaders : []).filter((l: string) => LOADERS.includes(l)) }))
+  return { versions, recommended: pickVersion(list)?.id ? String(pickVersion(list).id) : null }
+}

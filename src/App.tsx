@@ -1,101 +1,47 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { isoHero } from './lib/scene'
+import { useEffect, useRef, useState } from 'react'
+import side from './assets/side.jpg'
 import ModLibrary from './pages/ModLibrary'
 import Servers from './pages/Servers'
 import Settings from './pages/Settings'
-import Account from './components/Account'
 import Player from './pages/Player'
 import Downloads from './pages/Downloads'
+import Library from './pages/Library'
+import Home from './pages/Home'
+import Account from './components/Account'
+import TopBar, { Notice } from './components/TopBar'
+import Dock from './components/Dock'
+import RightRail from './components/RightRail'
 import UpdateBanner from './components/UpdateBanner'
-import { useUpdate } from './lib/useUpdate'
-import { useDownloads } from './lib/useDownloads'
-import { fmtSpeed } from './lib/fmt'
-import type { Dl } from './lib/useDownloads'
-import { useAuth } from './lib/useAuth'
 import ProfileIcon from './components/ProfileIcon'
 import NewProfile from './components/NewProfile'
-import Library from './pages/Library'
+import { NAV, Page } from './lib/nav'
+import { ICONS } from './lib/icons'
+import { useUpdate } from './lib/useUpdate'
+import { useDownloads } from './lib/useDownloads'
+import { useAuth } from './lib/useAuth'
 import { useProfiles } from './lib/useProfiles'
-import { useGame, Game } from './lib/useGame'
-
-const ICONS: Record<string, string> = {
-  downloads: '<path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>',
-  player: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
-  library: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 17.5h7M17.5 14v7"/>',
-  home: '<path d="M3 11l9-8 9 8v10H3z"/><path d="M9 21v-7h6v7"/>',
-  servers: '<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>',
-  packs: '<path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
-  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',
-}
-const NAV = [['home', 'Ana Sayfa'], ['library', 'Kütüphane'], ['servers', 'Sunucular'], ['packs', 'Mod Kütüphanesi'], ['downloads', 'İndirmeler'], ['player', 'Oyuncu'], ['settings', 'Ayarlar']] as const
-type Page = typeof NAV[number][0]
-
-// Ana sayfa: Modrinth'in gerçek en çok indirilen modları (çevrimdışıysa gösterilmez)
-function Featured({ go }: { go: (p: Page) => void }) {
-  const api = window.tank?.mods
-  const [hits, setHits] = useState<ModHit[]>([])
-  useEffect(() => { api?.search({ query: '', type: 'mod', sort: 'downloads' }).then(r => { if (r.ok) setHits(r.hits.slice(0, 3)) }) }, [])
-  if (!hits.length) return null
-  return (<>
-    <h2 className="sec">Popüler modlar</h2>
-    <div className="grid">{hits.map(h => (
-      <div className="card" key={h.id}><div className="cv"><span className="ld">{h.loaders[0] ?? 'Mod'}</span>{(h.cover ?? h.icon) && <img alt="" src={(h.cover ?? h.icon) as string} />}</div>
-        <div className="cb"><h3>{h.title}</h3><p>{h.desc}</p><div className="meta"><div className="chips"><span>⬇ {new Intl.NumberFormat('tr-TR', { notation: 'compact' }).format(h.downloads)}</span><span>{h.author}</span></div><button className="btn g" onClick={() => go('packs')}>Kütüphane</button></div></div></div>))}</div>
-  </>)
-}
-
-// Mojang'ın resmî sürüm notları (çevrimdışıysa veya alınamazsa bölüm gösterilmez)
-function News() {
-  const api = window.tank?.news
-  const [items, setItems] = useState<NewsItem[]>([])
-  useEffect(() => { api?.get().then(r => { if (r.ok) setItems(r.news) }) }, [])
-  if (!items.length) return null
-  return (<>
-    <h2 className="sec">Minecraft haberleri</h2>
-    <div className="grid">{items.map(n => (
-      <div className="card" key={n.version + n.title}><div className="cv"><span className="ld">Sürüm {n.version}</span>{n.image && <img alt="" src={n.image} />}</div>
-        <div className="cb"><h3>{n.title}</h3><p>{n.text}</p><div className="meta"><span>{n.date ?? ''}</span></div></div></div>))}</div>
-  </>)
-}
-
-function Home({ go, g, dl }: { go: (p: Page) => void; g: Game; dl: Dl }) {
-  const [ldr, setLdr] = useState('Vanilla')
-  const iso = useMemo(isoHero, [])
-  return (
-    <section className="view on">
-      <div className="hero">
-        <svg className="iso" viewBox="0 0 520 340" preserveAspectRatio="xMidYMid slice" dangerouslySetInnerHTML={{ __html: iso }} />
-        <div className="hc"><span className="tag">MINECRAFT JAVA LAUNCHER</span><h2>Blokları <b>sen</b> yönet.</h2>
-          <div className="last">Son oynanan: <b>{g.last ?? 'Henüz oynanmadı'}</b></div>
-          <div className="row">
-            <button className="play" onClick={() => void g.play()} disabled={g.busy}><svg viewBox="0 0 24 24"><path d="M6 3l15 9-15 9z" /></svg>{g.live ? 'OYUN AÇIK' : g.busy ? 'HAZIRLANIYOR' : 'OYNA'}</button>
-            <select value={g.ver} onChange={e => g.setVer(e.target.value)} disabled={g.busy}>{g.vers.length ? g.vers.map(v => <option key={v}>{v}</option>) : <option>{window.tank ? 'Sürümler yükleniyor…' : 'Sürüm yok'}</option>}</select>
-            <select value={ldr} onChange={e => setLdr(e.target.value)}>{['Vanilla', 'Fabric', 'Forge', 'NeoForge'].map(v => <option key={v} disabled={v !== 'Vanilla'}>{v}{v !== 'Vanilla' ? ' (profil ile)' : ''}</option>)}</select>
-          </div>
-          <div className={'bar' + (g.prog ? ' on' : '')}><i style={{ width: (g.prog ? g.prog.pct * 100 : 0) + '%' }} /></div>
-          <div className="st">{g.prog?.text}{(() => { const a = dl.active.find(x => x.kind === 'game'); return a ? <>{a.speed > 0 && ` · ${fmtSpeed(a.speed)}`} · <a className="lnk" onClick={() => dl.cancel(a.id)}>İptal et</a></> : null })()}</div>
-        </div>
-      </div>
-      <Featured go={go} />
-      <News />
-    </section>
-  )
-}
+import { useGame } from './lib/useGame'
 
 export default function App() {
-  const [page, setPage] = useState<Page>('home'), [msg, setMsg] = useState(''), tm = useRef<number>()
+  const [page, setPage] = useState<Page>('home'), [msg, setMsg] = useState(''), tm = useRef<number | undefined>(undefined)
+  const [search, setSearch] = useState<{ q: string; n: number } | undefined>(undefined)
   const toast = (m: string) => { setMsg(m); clearTimeout(tm.current); tm.current = window.setTimeout(() => setMsg(''), Math.max(3200, m.length * 70)) }
   useEffect(() => () => clearTimeout(tm.current), [])
-  const g = useGame(toast)
-  const auth = useAuth(toast)
-  const dl = useDownloads()
-  const upd = useUpdate()
+  const g = useGame(toast), auth = useAuth(toast), dl = useDownloads(), upd = useUpdate()
   const p = useProfiles(), [newP, setNewP] = useState(false)
+  useEffect(() => { if (page !== 'packs') setSearch(undefined) }, [page]) // eski arama, Mod Kütüphanesi'ne sonradan girince geri gelmesin
   const idx = NAV.findIndex(n => n[0] === page)
+  const us = upd.state
+  const notices: Notice[] = [
+    ...(us.phase === 'available' || us.phase === 'ready' ? [{ id: 'upd', text: `TankClient v${us.version} ${us.phase === 'ready' ? 'kuruluma hazır' : 'hazır'}`, page: 'settings' as Page }] : []),
+    ...dl.tasks.filter(t => t.state === 'error').slice(0, 3).map(t => ({ id: t.id, text: `İndirme hatası: ${t.title}`, page: 'downloads' as Page })),
+  ]
+  const createProfile = (n: string, m: string, l: string) => { void p.create(n, m, l).then(e => { if (e) toast(e); else { setNewP(false); setPage('library') } }) }
   return (
     <div className="app">
       <aside>
-        <div className="brand"><svg width="36" height="36" viewBox="0 0 40 40"><path d="M20 2l16 9v18l-16 9L4 29V11z" fill="#18191c" stroke="#ff6a1a" strokeWidth="2.5" /><path d="M11 14h18v5h-6.5v11h-5V19H11z" fill="#ff6a1a" /></svg><span>Tank<b>Client</b></span></div>
+        <div className="brand"><svg width="38" height="38" viewBox="0 0 40 40"><path d="M20 2l16 9v18l-16 9L4 29V11z" fill="#18191c" stroke="#ff6a1a" strokeWidth="2.5" /><path d="M11 14h18v5h-6.5v11h-5V19H11z" fill="#ff6a1a" /></svg>
+          <div><span>Tank<b>Client</b></span><small>Blokların ötesinde</small></div></div>
         <nav><div className="ind" style={{ transform: `translateY(${idx * 48}px)` }} />
           {NAV.map(([k, n]) => <button key={k} className={k === page ? 'on' : ''} onClick={() => setPage(k)}><svg viewBox="0 0 24 24" dangerouslySetInnerHTML={{ __html: ICONS[k] }} />{n}{k === 'downloads' && dl.active.length > 0 && <span className="bdg">{dl.active.length}</span>}</button>)}</nav>
         <div className="profs">
@@ -105,19 +51,27 @@ export default function App() {
             <button className="pt add" title="Yeni profil" onClick={() => setNewP(true)}>+</button>
           </div>
         </div>
+        <div className="sideart" style={{ backgroundImage: `url(${side})` }}><span>TankClient{us.current ? ` v${us.current}` : ''}</span></div>
         <Account auth={auth} />
       </aside>
-      <main key={page}>
-        <UpdateBanner upd={upd} />
-        {page === 'home' && <Home go={setPage} g={g} dl={dl} />}
-        {page === 'library' && <Library toast={toast} g={g} p={p} go={setPage} />}
-        {page === 'servers' && <Servers toast={toast} g={g} />}
-        {page === 'packs' && <ModLibrary toast={toast} g={g} p={p} />}
-        {page === 'downloads' && <Downloads dl={dl} />}
-        {page === 'player' && <Player auth={auth} />}
-        {page === 'settings' && <Settings upd={upd} />}
-      </main>
-      {newP && <NewProfile vers={g.vers} onCreate={(n, m, l) => { void p.create(n, m, l).then(e => { if (e) toast(e); else { setNewP(false); setPage('library') } }) }} onClose={() => setNewP(false)} />}
+      <div className="shell">
+        <TopBar onSearch={q => { setSearch({ q, n: Date.now() }); setPage('packs') }} notices={notices} go={setPage} />
+        <div className="body">
+          <main key={page}>
+            <UpdateBanner upd={upd} />
+            {page === 'home' && <Home go={setPage} g={g} onNewProfile={() => setNewP(true)} />}
+            {page === 'library' && <Library toast={toast} g={g} p={p} go={setPage} />}
+            {page === 'servers' && <Servers toast={toast} g={g} />}
+            {page === 'packs' && <ModLibrary toast={toast} g={g} p={p} query={search} />}
+            {page === 'downloads' && <Downloads dl={dl} />}
+            {page === 'player' && <Player auth={auth} />}
+            {page === 'settings' && <Settings upd={upd} />}
+          </main>
+          {(page === 'home' || page === 'packs') && <RightRail kind={page === 'home' ? 'home' : 'mods'} go={setPage} />}
+        </div>
+        <Dock g={g} dl={dl} p={p} go={setPage} />
+      </div>
+      {newP && <NewProfile vers={g.vers} onCreate={createProfile} onClose={() => setNewP(false)} />}
       <div id="toast" className={msg ? 'on' : ''}>{msg}</div>
     </div>
   )

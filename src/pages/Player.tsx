@@ -1,20 +1,21 @@
 import { useEffect, useState } from 'react'
 import type { Auth } from '../lib/useAuth'
+import PageHead from '../components/PageHead'
+import Skin from '../components/Skin'
 
 const dur = (ms: number) => { const m = Math.round(ms / 60000); return m < 60 ? `${m} dk` : `${Math.floor(m / 60)} sa ${m % 60} dk` }
 const when = (t: number) => new Date(t).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
 
 export default function Player({ auth }: { auth: Auth }) {
-  const u = auth.user
+  const u = auth.user, acc = auth.accounts, off = acc.active === 'ms' ? undefined : acc.offline.find(o => o.id === acc.active)
   const [st, setSt] = useState<PlayStats | null>(null)
   useEffect(() => { window.tank?.stats.get().then(r => { if (r.ok) setSt(r.stats) }) }, [])
   return (
     <section className="view on">
-      <h1>Oyuncu</h1><p className="sub">Hesabın ve TankClient ile oynadığın oyunlar</p>
+      <PageHead title="Oyuncu" sub="Hesabın ve TankClient ile oynadığın oyunlar" />
       <div className="pl">
         <div className="skin">
-          {u ? <img className="body" alt="" src={`https://mc-heads.net/body/${u.uuid}/220`} onError={e => { const i = e.currentTarget; if (!i.dataset.fb) { i.dataset.fb = '1'; i.src = `https://crafatar.com/renders/body/${u.uuid}?scale=5&overlay` } }} />
-            : <div className="body ghost">?</div>}
+          {u ? <Skin skin={auth.skin} mode="body" scale={8} className="body" fallback={<img className="body" alt="" src={`https://mc-heads.net/body/${u.uuid}/220`} />} /> : <div className="body ghost">?</div>}
           <div className="pname">{u ? u.name : 'Giriş yapılmadı'}</div>
           {u ? <>
             <span className="st">Minecraft: Java Edition sahibi ✓</span>
@@ -23,6 +24,7 @@ export default function Player({ auth }: { auth: Auth }) {
             : <button className="btn" onClick={() => void auth.login()}>MICROSOFT İLE GİRİŞ YAP</button>}
         </div>
         <div>
+          {off && <p className="notice">Şu an “{off.name}” çevrimdışı hesabıyla oynuyorsun. Skin ve sahiplik bilgisi Microsoft hesabından gelir.</p>}
           <div className="tiles">
             <div className="tile"><b>{st ? dur(st.totalMs) : '—'}</b><span>Toplam oyun süresi</span></div>
             <div className="tile"><b>{st ? st.count : '—'}</b><span>Oyun oturumu</span></div>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-const TABS = ['Oyun', 'Java', 'Klasörler', 'Launcher'] as const
+const TABS = ['Oyun', 'Java', 'Klasörler', 'Görünüm', 'Launcher'] as const
 const RES = ['1280x720', '1600x900', '1920x1080', '2560x1440']
 const Toggle = ({ on, set }: { on: boolean; set?: (v: boolean) => void }) =>
   <div className={'tg' + (on ? ' on' : '')} style={set ? undefined : { opacity: .4, pointerEvents: 'none' }} onClick={() => set?.(!on)} />
@@ -8,6 +8,7 @@ const Row = ({ t, s, children }: { t: string; s?: string; children: React.ReactN
   <div className="set"><div>{t}{s && <small>{s}</small>}</div>{children}</div>
 
 import type { Upd } from '../lib/useUpdate'
+import PageHead from '../components/PageHead'
 
 export default function Settings({ upd }: { upd: Upd }) {
   const api = window.tank?.settings
@@ -18,7 +19,7 @@ export default function Settings({ upd }: { upd: Upd }) {
     api?.get().then(r => { setS(r.settings); setMaxRam(r.maxRamMb); setDefDir(r.defaultGameDir) })
     return () => clearTimeout(timer.current)
   }, [])
-  if (!api) return <section className="view on"><h1>Ayarlar</h1><p className="sub">Ayarlar yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
+  if (!api) return <section className="view on"><PageHead title="Ayarlar" sub="Ayarlar yalnızca masaüstü uygulamasında kullanılabilir." /></section>
   if (!s) return <section className="view on"><h1>Ayarlar</h1></section>
   const up = (p: Partial<AppSettings>) => {
     const n = { ...s, ...p }; setS(n)
@@ -31,7 +32,7 @@ export default function Settings({ upd }: { upd: Upd }) {
   const resList = RES.includes(s.resolution) ? RES : [s.resolution, ...RES]
   return (
     <section className="view on">
-      <h1>Ayarlar</h1><p className="sub">Değişiklikler otomatik kaydedilir ve sonraki oyun başlatmada uygulanır</p>
+      <PageHead title="Ayarlar" sub="Değişiklikler otomatik kaydedilir ve sonraki oyun başlatmada uygulanır" />
       <div className="tabs">{TABS.map(t => <button key={t} className={'fc' + (t === tab ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>)}</div>
       <div className="pane on" key={tab}>
         {tab === 'Oyun' && <>
@@ -45,6 +46,9 @@ export default function Settings({ upd }: { upd: Upd }) {
           {!s.javaAuto && <Row t="Java yolu" s="Oyun sürümüne uygun bir java.exe seç"><div className="row"><input type="text" readOnly title={s.javaPath} value={s.javaPath || 'Seçilmedi'} /><button className="btn g" onClick={pickJava}>Seç…</button></div></Row>}</>}
         {tab === 'Klasörler' && <>
           <Row t="Minecraft klasörü" s="Yeni dosyalar buraya indirilir; mevcut dosyalar taşınmaz"><div className="row"><input type="text" readOnly title={s.gameDir || defDir} value={s.gameDir || defDir} /><button className="btn g" onClick={pickDir}>Seç…</button>{s.gameDir && <button className="btn g" onClick={() => up({ gameDir: '' })}>Varsayılan</button>}</div></Row></>}
+        {tab === 'Görünüm' && <>
+          <Row t="Arayüz boyutu" s="Uygulama çok büyük veya küçük görünüyorsa değiştir; hemen uygulanır"><div className="row"><input type="range" min={70} max={120} step={5} value={s.uiScale} onChange={e => up({ uiScale: +e.target.value })} /><b style={{ width: 52 }}>%{s.uiScale}</b></div></Row>
+          <Row t="Açıklamaları Türkçeye çevir" s="Mod açıklamaları ve Minecraft haberleri ücretsiz bir çeviri servisiyle (MyMemory) çevrilir; günlük sınırı vardır ve çeviri hatalı olabilir. Kapalıyken özgün metin gösterilir."><Toggle on={s.translate} set={v => up({ translate: v })} /></Row></>}
         {tab === 'Launcher' && <>
           <Row t="Otomatik güncelleme" s="Açılışta yeni sürüm olup olmadığını kontrol eder (GitHub Releases)"><Toggle on={s.autoUpdate} set={v => up({ autoUpdate: v })} /></Row>
           <Row t="Beta sürümlerini dahil et" s="Önizleme (pre-release) sürümleri de önerilir"><Toggle on={s.betaUpdates} set={v => up({ betaUpdates: v })} /></Row>

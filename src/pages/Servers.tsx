@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { scene, Biome } from '../lib/scene'
 import type { Game } from '../lib/useGame'
+import PageHead from '../components/PageHead'
 
 type St = PingRes | { checking: true }
 type Modal = { kind: 'edit'; srv?: SrvEntry } | { kind: 'detail'; id: string } | null
@@ -40,7 +41,7 @@ export default function Servers({ toast, g }: { toast: (m: string) => void; g: G
     api?.ping(s.address).then(r => { if (alive.current) setSt(o => ({ ...o, [s.id]: r })) })
   })
   useEffect(() => { if (!list) return; refresh(list); const t = setInterval(() => refresh(list), 60000); return () => clearInterval(t) }, [key])
-  if (!api) return <section className="view on"><h1>Sunucular</h1><p className="sub">Sunucu listesi yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
+  if (!api) return <section className="view on"><PageHead title="Sunucular" sub="Sunucu listesi yalnızca masaüstü uygulamasında kullanılabilir." /></section>
   const persist = async (l: SrvEntry[]) => { const r = await api.save(l); setList(r); return r }
   const save = async (e: SrvEntry) => {
     const l = list ?? [], r = await persist(l.some(x => x.id === e.id) ? l.map(x => (x.id === e.id ? e : x)) : [...l, e])
@@ -54,7 +55,7 @@ export default function Servers({ toast, g }: { toast: (m: string) => void; g: G
   const canJoin = !g.busy && !g.live
   return (
     <section className="view on">
-      <h1>Sunucular</h1><p className="sub">Kendi sunucularını ekle; oyuncu sayısı ve durum canlı olarak sunucudan okunur</p>
+      <PageHead title="Sunucular" sub="Kendi sunucularını ekle; oyuncu sayısı ve durum canlı olarak sunucudan okunur" />
       <div className="tools">
         <label className="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-5-5" /></svg><input value={q} onChange={e => setQ(e.target.value)} placeholder="Sunucu ara…" /></label>
         <button className={'fc' + (!onlyFav ? ' on' : '')} onClick={() => setOnlyFav(false)}>Tümü</button>

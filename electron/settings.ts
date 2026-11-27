@@ -1,8 +1,8 @@
 import fs from 'fs'
 import path from 'path'
 
-export interface Settings { ramMb: number; resolution: string; fullscreen: boolean; javaAuto: boolean; javaPath: string; gameDir: string; minimizeOnLaunch: boolean; autoUpdate: boolean; betaUpdates: boolean; renderDistance: number }
-export const DEFAULTS: Settings = { ramMb: 4096, resolution: '1920x1080', fullscreen: false, javaAuto: true, javaPath: '', gameDir: '', minimizeOnLaunch: false, autoUpdate: true, betaUpdates: true, renderDistance: 0 }
+export interface Settings { ramMb: number; resolution: string; fullscreen: boolean; javaAuto: boolean; javaPath: string; gameDir: string; minimizeOnLaunch: boolean; autoUpdate: boolean; betaUpdates: boolean; renderDistance: number; uiScale: number; translate: boolean }
+export const DEFAULTS: Settings = { ramMb: 4096, resolution: '1920x1080', fullscreen: false, javaAuto: true, javaPath: '', gameDir: '', minimizeOnLaunch: false, autoUpdate: true, betaUpdates: true, renderDistance: 0, uiScale: 90, translate: true }
 
 // Renderer'dan veya diskten gelen her değer burada doğrulanır; geçersiz alan varsayılana döner.
 export function sanitize(raw: unknown, maxRamMb = 32768): Settings {
@@ -20,6 +20,8 @@ export function sanitize(raw: unknown, maxRamMb = 32768): Settings {
     gameDir: dir === '' || path.isAbsolute(dir) ? dir : '',
     minimizeOnLaunch: r.minimizeOnLaunch === true,
     renderDistance: typeof r.renderDistance === 'number' && Number.isFinite(r.renderDistance) && r.renderDistance >= 1 ? Math.min(32, Math.max(2, Math.round(r.renderDistance))) : 0,
+    uiScale: typeof r.uiScale === 'number' && Number.isFinite(r.uiScale) ? Math.min(120, Math.max(70, Math.round(r.uiScale / 5) * 5)) : 90,
+    translate: r.translate !== false,
     autoUpdate: r.autoUpdate !== false,
     betaUpdates: r.betaUpdates !== false,
   }

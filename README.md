@@ -2,13 +2,18 @@
 
 Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. Electron, React ve TypeScript ile yazıldı; siyah-antrasit-turuncu marka kimliğine sahip.
 
-> TankClient resmî bir Minecraft ürünü değildir; Mojang Studios veya Microsoft ile bağlantısı yoktur. Minecraft, Mojang Studios'un tescilli markasıdır. Offline/crack desteği **yoktur**: yalnızca Minecraft Java Edition'a sahip Microsoft hesaplarıyla giriş yapılır.
+> TankClient resmî bir Minecraft ürünü değildir; Mojang Studios veya Microsoft ile bağlantısı yoktur. Minecraft, Mojang Studios'un tescilli markasıdır. Giriş yalnızca Minecraft Java Edition'a sahip Microsoft hesaplarıyla yapılır. Çevrimdışı hesaplar yalnızca böyle bir hesap bağlıyken eklenebilir ve kullanılabilir (kopya/korsan kullanım için değildir); çevrimdışı hesaplar yalnızca tek oyunculuda ve çevrimdışı moddaki sunucularda çalışır.
 
 ## Durum
 
 | Alan | Durum |
 |---|---|
-| Arayüz (Ana sayfa, Kütüphane, Sunucular, Mod Kütüphanesi, Ayarlar) | Çalışır |
+| Arayüz (çerçevesiz pencere, üst arama çubuğu, alt oyun çubuğu, sağ sütun, tasarım görselleri) | Yazıldı; görsel olarak denenmedi |
+| Skin (Mojang doku sunucusundan gerçek skin, kenar çubuğunda kafa, Oyuncu sayfasında tam vücut) | Yazıldı; gerçek hesapla denenmedi |
+| Çevrimdışı hesaplar (Microsoft sahipliği şartlı, en fazla 5, hesap değiştirici) | Yazıldı; çevrimdışı UUID algoritması test edildi |
+| Sürüm seçimi (mod ve mod paketi kurarken), Fabulously Optimized sabit öne çıkan | Yazıldı; sahte API ile test edildi |
+| Türkçe çeviri (ücretsiz MyMemory, önbellekli, günlük sınırlı) | Yazıldı; önbellek/sınır mantığı test edildi, gerçek servisle denenmedi |
+| Arayüz sayfaları (Ana sayfa, Kütüphane, Sunucular, Mod Kütüphanesi, Ayarlar) | Çalışır |
 | Marka (TankClient), ikon, veri klasörü, eski TANKmc-Data taşıması | Yazıldı; taşıma mantığı test edildi |
 | Microsoft girişi | Client ID tanımlı; gerçek hesapla test edilmedi, Minecraft servisleri için Mojang uygulama onayı gerekir |
 | Vanilla başlatma (1.8.9+; resmî manifest, kütüphane/asset indirme, SHA1 doğrulama, Mojang Java) | Yazıldı; argüman mantığı test edildi, gerçek oyunla denenmedi |
