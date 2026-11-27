@@ -1,5 +1,5 @@
 type AuthResult = { ok: true; user: { name: string; uuid: string } } | { ok: false; error: string }
-interface AppSettings { ramMb: number; resolution: string; fullscreen: boolean; javaAuto: boolean; javaPath: string; gameDir: string; minimizeOnLaunch: boolean; autoUpdate: boolean; betaUpdates: boolean }
+interface AppSettings { ramMb: number; resolution: string; fullscreen: boolean; javaAuto: boolean; javaPath: string; gameDir: string; minimizeOnLaunch: boolean; autoUpdate: boolean; betaUpdates: boolean; renderDistance: number }
 interface PingRes { online: boolean; players?: number; max?: number; version?: string; motd?: string; favicon?: string; latency?: number; error?: string }
 interface SrvEntry { id: string; name: string; address: string; desc: string; fav: boolean }
 interface ModHit { id: string; slug: string; title: string; desc: string; icon: string | null; author: string; downloads: number; follows: number; cats: string[]; loaders: string[]; cover: string | null; type: string }

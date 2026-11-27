@@ -41,6 +41,13 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
   useEffect(() => { const t = setTimeout(() => run(0), q ? 350 : 0); return () => clearTimeout(t) }, [tab, q, cat, sort, compat, inst?.id, inst?.mc, inst?.loader])
   useEffect(() => { setProj(null); if (detail) api?.project(detail.id).then(r => { if (r.ok) setProj(r.project) }) }, [detail?.id])
   useEffect(() => { setUpd([]) }, [inst?.id])
+  // Uzak görüş (LOD): bu profilin sürümü ve loader'ı için Distant Horizons var mı?
+  const [lod, setLod] = useState<ModHit | null | undefined>(undefined)
+  useEffect(() => {
+    setLod(undefined)
+    if (!api || !inst || inst.loader === 'vanilla') return
+    api.search({ query: 'Distant Horizons', type: 'mod', mc: inst.mc, loader: inst.loader }).then(r => setLod(r.ok ? r.hits.find(h => h.slug === 'distanthorizons') ?? null : undefined))
+  }, [inst?.id, inst?.mc, inst?.loader])
   if (!api) return <section className="view on"><h1>Mod Kütüphanesi</h1><p className="sub">Mod kütüphanesi yalnızca masaüstü uygulamasında kullanılabilir.</p></section>
 
   const put = (i: Inst) => setInsts(l => (l ? l.map(x => (x.id === i.id ? i : x)) : [i]))
@@ -95,7 +102,7 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
         </> : <span className="st">{insts ? 'Mod kurmak için bir profil oluştur.' : 'Yükleniyor…'}</span>}
         <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setForm(true)}>+ YENİ PROFİL</button>
       </div>
-      <p className="notice">Fabric ve Quilt profillerini Kütüphane’den oynayabilirsin; modlar profil klasöründen yüklenir. Forge ve NeoForge ile başlatma sonraki aşamada eklenecek.</p>
+      <p className="notice">Fabric, Quilt, Forge ve NeoForge profillerini Kütüphane’den oynayabilirsin; modlar profil klasöründen yüklenir. Forge ve NeoForge ilk açılışta resmî kurulum programını çalıştırır, bu birkaç dakika sürebilir.</p>
       <div className="tabs">{([['mod', 'Keşfet'], ['modpack', 'Mod Paketleri'], ['installed', `Kurulu (${inst?.mods.length ?? 0})`]] as const).map(([k, v]) => <button key={k} className={'fc' + (tab === k ? ' on' : '')} onClick={() => setTab(k)}>{v}</button>)}</div>
 
       {tab === 'installed' ? (
@@ -123,6 +130,12 @@ export default function ModLibrary({ toast, g, p }: { toast: (m: string) => void
               <label className="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" /><path d="M21 21l-5-5" /></svg><input value={q} onChange={e => setQ(e.target.value)} placeholder={tab === 'mod' ? 'Mod ara…' : 'Mod paketi ara…'} /></label>
               <select value={sort} onChange={e => setSort(e.target.value)}>{[['relevance', 'İlgililik'], ['downloads', 'En çok indirilen'], ['follows', 'En çok takip edilen'], ['newest', 'En yeni'], ['updated', 'Son güncellenen']].map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
             </div>
+            {tab === 'mod' && inst && inst.loader !== 'vanilla' && lod !== undefined && (lod
+              ? <div className="lodp"><Thumb src={lod.icon} name={lod.title} />
+                  <div className="mt"><b>Uzak görüş (LOD): 32 chunk sınırını aşar</b>
+                    <span style={{ whiteSpace: 'normal' }}>{lod.title}, uzak araziyi sadeleştirilmiş (LOD) çizerek görüş mesafesini yüzlerce chunk’a çıkarabilir. Performans ve RAM kullanımı artar; uzaklık modun kendi ayarlarından seçilir.</span></div>
+                  {have.has(lod.id) ? <button className="btn ok">KURULU ✓</button> : <button className="btn" disabled={busy[lod.id]} onClick={() => void install(lod)}>{busy[lod.id] ? 'KURULUYOR…' : 'KUR'}</button>}</div>
+              : <p className="notice">Bu profilin sürümü ({inst.mc} · {LN[inst.loader]}) için Uzak Görüş (Distant Horizons) bulunamadı.</p>)}
             {spot && <div className="spot" onClick={() => setDetail(spot)}>
               {spot.cover && <img className="bg" alt="" src={spot.cover} />}
               <div className="in"><span className="tag">ÖNE ÇIKAN</span><h2 style={{ fontSize: 26 }}>{spot.title}</h2><p className="st" style={{ margin: 0 }}>{spot.desc}</p>

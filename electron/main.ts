@@ -13,6 +13,7 @@ import * as news from './news'
 import * as stats from './stats'
 import { Downloads } from './downloads'
 import * as up from './updater'
+import * as gameopts from './gameopts'
 import { UPDATE_REPO } from './config'
 import { readBody } from './fetchbytes'
 import fs from 'fs'
@@ -51,7 +52,7 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
   if (profileId != null) {
     const p = typeof profileId === 'string' ? mi.loadAll(mctx()).find(x => x.id === profileId) : undefined
     if (!p) return { ok: false, error: 'Profil bulunamadı.' }
-    if (!['vanilla', 'fabric', 'quilt'].includes(p.loader)) return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
+    if (!['vanilla', 'fabric', 'quilt', 'forge', 'neoforge'].includes(p.loader)) return { ok: false, error: `${p.loader} ile oyun başlatma henüz desteklenmiyor (sonraki aşama).` }
     version = p.mc; loader = p.loader; profileName = p.name; profileDir = mi.profileDir(mctx(), p.id) // profil kendi klasöründe (dünyalar, ayarlar) çalışır
   }
   if (typeof version !== 'string' || !/^[\w.\-]{1,40}$/.test(version)) return { ok: false, error: 'Geçersiz sürüm.' }
@@ -61,6 +62,8 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
     if (!join) return { ok: false, error: 'Geçersiz sunucu adresi.' }
   }
   const cfg = settings.sanitize(settings.load(data.dir), maxRam())
+  // Görüş mesafesi (0 = oyunun kendi ayarı): her başlatmada oyun klasöründeki options.txt'ye yazılır
+  if (cfg.renderDistance > 0) { try { gameopts.applyOptions(profileDir ?? (cfg.gameDir || path.join(data.dir, 'minecraft')), { renderDistance: String(cfg.renderDistance) }) } catch { /* yazılamadı: oyun yine başlar */ } }
   const label = profileName ? `${profileName} · ${version}` : `Vanilla ${version}`; let started = 0
   const t = dl.start('game', `Minecraft ${version}${loader && loader !== 'vanilla' ? ' · ' + loader : ''}${profileName ? ' · ' + profileName : ''}`)
   void game.play(version, (ch, p) => {

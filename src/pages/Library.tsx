@@ -4,7 +4,7 @@ import NewProfile from '../components/NewProfile'
 import type { Game } from '../lib/useGame'
 import type { Profiles } from '../lib/useProfiles'
 
-const PLAYABLE = ['vanilla', 'fabric', 'quilt']
+const PLAYABLE = ['vanilla', 'fabric', 'quilt', 'forge', 'neoforge']
 const LN: Record<string, string> = { vanilla: 'Vanilla', fabric: 'Fabric', forge: 'Forge', neoforge: 'NeoForge', quilt: 'Quilt' }
 
 export default function Library({ toast, g, p, go }: { toast: (m: string) => void; g: Game; p: Profiles; go: (k: 'packs') => void }) {

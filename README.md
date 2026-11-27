@@ -16,12 +16,13 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 | Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült, otomatik güncelleme) | Kalıcı ve uygulanır; Windows ile başlat yok (kapalı gösterilir) |
 | Sunucular (ekle/düzenle/sil, favori, arama, detay, canlı durum, katıl) | Durum ve oyuncu sayısı sunucudan okunur; gerçek sunucuyla denenmedi |
 | Mod Kütüphanesi (Modrinth: arama, kategori, uyumluluk, bağımlılıklar, etkinleştir/devre dışı, güncelleme, .mrpack mod paketleri) | Kurulum mantığı sahte API ile test edildi; gerçek Modrinth ile denenmedi |
+| Görüş mesafesi (2–32 chunk, her başlatmada options.txt'ye yazılır) ve Uzak Görüş (LOD) için Distant Horizons'u tek tıkla kurma | Yazıldı; options.txt yazımı test edildi, oyunda ve LOD ile 32 chunk üstü denenmedi |
 | Kütüphane ve profiller, Minecraft haberleri | Yazıldı; arayüz denenmedi |
 | EXE (kurulumlu + portable) ve GitHub Actions | Derleme adımı çalıştı; Release yükleme `gh` ile yapılır |
 | Oyuncu sayfası (gerçek skin görüntüsü, hesap bilgisi, TankClient ile oynanan gerçek süre ve geçmiş) | Yazıldı; arayüz denenmedi |
 | İndirme merkezi (Minecraft, mod ve mod paketi indirmeleri: ilerleme, hız, kalan süre, iptal, geçmiş, hata) | Yazıldı; takip mantığı test edildi, gerçek indirmeyle denenmedi |
 | Otomatik güncelleme (GitHub Releases: sürüm karşılaştırma, SHA-256 doğrulama, indirme merkezinde izleme, kurulumlu ve portable) | Yazıldı; karar mantığı test edildi, gerçek release ile denenmedi; `UPDATE_REPO` tanımlanmalı |
-| Forge ve NeoForge ile başlatma | Henüz yok |
+| Forge (1.13+) ve NeoForge (1.20.2+) başlatma (resmî kurulum programı `--installClient`, sürüm JSON birleştirme) | Yazıldı; kurulum/birleştirme mantığı sahte kurulum programıyla test edildi, **gerçek Forge/NeoForge kurulumu ve oyun denenmedi** |
 
 ## Geliştirme
 
@@ -60,6 +61,9 @@ Kaldırma işlemi kullanıcı verisini **silmez**. Portable'ı başka bilgisayar
 - Kurulumlu/geliştirme: `%APPDATA%\TANKmc`.
 
 Eski klasör hiçbir koşulda silinmez veya taşınmaz. Kopya önce geçici klasöre yapılır; yarım kalırsa sonraki açılışta yeniden denenir, başarısız olursa bir hata penceresi çıkar.
+
+## Planlanan
+Feather/Lunar/Badlion gibi istemcilerin ekstra özellikleri ve ayar sekmeleri (kapsam sonra belirlenecek).
 
 ## Otomatik güncelleme
 1. `electron/config.ts` içindeki `UPDATE_REPO` değerine herkese açık deponu yaz (`kullanici/depo`) veya `TANK_UPDATE_REPO` ortam değişkenini ver. Boşsa güncelleme kontrolü kapalıdır.

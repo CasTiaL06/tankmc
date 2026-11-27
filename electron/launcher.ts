@@ -8,6 +8,7 @@ import * as auth from './auth'
 import type { Handle } from './downloads'
 import { readBody } from './fetchbytes'
 import { applyLoader } from './loaders'
+import { installLoader } from './forgeinstall'
 import type { Settings } from './settings'
 
 type Emit = (ch: 'game:progress' | 'game:state', p: unknown) => void
@@ -32,6 +33,7 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>, tick:
   let i = 0
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const t = items[i++]; await fn(t); tick() } }))
 }
+const getText = async (u: string): Promise<string> => { const r = await fetch(u); if (!r.ok) throw new Error(`İndirme hatası (${r.status}): ${u}`); return r.text() }
 const manifest = async () => (mf ??= await getJson(MANIFEST))
 
 // 1.8.9 ve sonrası resmî sürümler (yeniden eskiye)
@@ -79,12 +81,30 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
       java = cfg.javaPath
     }
 
+    if (loader === 'forge' || loader === 'neoforge') {
+      // Resmî kurulum programı vanilla sürüm dosyasını ve Java'yı bekler; sonuç profil JSON'u vanilla ile birleştirilir
+      await get(vj.downloads.client.url, path.join(vdir, id + '.jar'), vj.downloads.client.sha1, dl, vj.downloads.client.size)
+      const run = (args: string[], logFile: string) => new Promise<number>((resolve, reject) => {
+        fs.mkdirSync(path.dirname(logFile), { recursive: true }); const lg = fs.createWriteStream(logFile)
+        const p = spawn(java, ['-Djava.awt.headless=true', ...args], { cwd: R, windowsHide: true })
+        const kill = () => { p.kill() }; dl?.signal.addEventListener('abort', kill, { once: true })
+        const to = setTimeout(kill, 15 * 60_000)
+        p.stdout.on('data', b => lg.write(b)); p.stderr.on('data', b => lg.write(b))
+        p.on('error', e => { clearTimeout(to); reject(e) }); p.on('exit', c => { clearTimeout(to); lg.end(); resolve(c ?? -1) })
+      })
+      vj = await installLoader(loader, id, R, vj, { getJson, getText, download: (u, d, h) => get(u, d, h, dl), run, step: s => step(s, 0.3) }, path.join(app.getPath('userData'), 'logs', `${loader}-install-${Date.now()}.log`))
+    }
     const jobs: { url: string; dest: string; sha1?: string; size?: number }[] = [], cp: string[] = [], natives: string[] = []
     const jar = path.join(vdir, id + '.jar')
     jobs.push({ url: vj.downloads.client.url, dest: jar, sha1: vj.downloads.client.sha1, size: vj.downloads.client.size })
     for (const l of vj.libraries.filter((l: any) => ruleOk(l.rules))) {
       const a = l.downloads?.artifact
-      if (a) { const d = safeJoin(path.join(R, 'libraries'), a.path); jobs.push({ url: a.url, dest: d, sha1: a.sha1, size: a.size }); cp.push(d) }
+      if (a) {
+        const d = safeJoin(path.join(R, 'libraries'), a.path)
+        if (a.url) jobs.push({ url: a.url, dest: d, sha1: a.sha1, size: a.size })
+        else if (!fs.existsSync(d)) throw new Error('Loader kütüphanesi eksik (kurulum tamamlanmamış olabilir): ' + a.path) // kurulum programının ürettiği dosyalar
+        cp.push(d)
+      }
       const cl = l.natives?.windows?.replace('${arch}', '64'), na = cl && l.downloads?.classifiers?.[cl]
       if (na) { const d = safeJoin(path.join(R, 'libraries'), na.path); jobs.push({ url: na.url, dest: d, sha1: na.sha1, size: na.size }); natives.push(d) }
     }
@@ -102,7 +122,7 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
     for (const j of natives) await new Promise<void>((res, rej) => execFile('tar', ['-xf', j, '-C', nd], e => e ? rej(new Error('Native dosyalar açılamadı: ' + e.message)) : res()))
 
     dl?.finish() // indirme aşaması bitti
-    const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
+    const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: 'msa', version_type: vj.type, natives_directory: nd, library_directory: path.join(R, 'libraries'), classpath_separator: ';', launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
     const [w, h] = cfg.resolution.split('x')
     const args = [`-Xmx${cfg.ramMb}M`, ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : []), ...(join ? joinArgs(vj, join.host, join.port) : [])]
     step('Minecraft başlatılıyor…', 0.95)

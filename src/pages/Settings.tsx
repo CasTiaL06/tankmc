@@ -37,7 +37,9 @@ export default function Settings({ upd }: { upd: Upd }) {
         {tab === 'Oyun' && <>
           <Row t="Ayrılan RAM" s={note}><div className="row"><input type="range" min={2048} max={maxRam} step={512} value={Math.min(s.ramMb, maxRam)} onChange={e => up({ ramMb: +e.target.value })} /><b style={{ width: 56 }}>{+gb.toFixed(1)} GB</b></div></Row>
           <Row t="Çözünürlük" s="Oyun penceresi boyutu"><select value={s.resolution} onChange={e => up({ resolution: e.target.value })}>{resList.map(r => <option key={r} value={r}>{r.replace('x', '×')}</option>)}</select></Row>
-          <Row t="Tam ekran" s="Oyunu tam ekran başlat"><Toggle on={s.fullscreen} set={v => up({ fullscreen: v })} /></Row></>}
+          <Row t="Tam ekran" s="Oyunu tam ekran başlat"><Toggle on={s.fullscreen} set={v => up({ fullscreen: v })} /></Row>
+          <Row t="Görüş mesafesini TankClient yönetsin" s="Kapalıyken oyunun kendi ayarı kullanılır"><Toggle on={s.renderDistance > 0} set={v => up({ renderDistance: v ? 12 : 0 })} /></Row>
+          {s.renderDistance > 0 && <Row t="Görüş mesafesi" s="Her başlatmada uygulanır; oyunda değiştirdiğin değerin üstüne yazılır. Vanilla en fazla 32 chunk destekler; daha uzağı için Mod Kütüphanesi'ndeki Uzak Görüş (LOD) modunu kullan."><div className="row"><input type="range" min={2} max={32} step={1} value={s.renderDistance} onChange={e => up({ renderDistance: +e.target.value })} /><b style={{ width: 84 }}>{s.renderDistance} chunk</b></div></Row>}</>}
         {tab === 'Java' && <>
           <Row t="Java’yı otomatik yönet" s="Sürüme uygun Mojang Java’sı indirilir"><Toggle on={s.javaAuto} set={v => up({ javaAuto: v })} /></Row>
           {!s.javaAuto && <Row t="Java yolu" s="Oyun sürümüne uygun bir java.exe seç"><div className="row"><input type="text" readOnly title={s.javaPath} value={s.javaPath || 'Seçilmedi'} /><button className="btn g" onClick={pickJava}>Seç…</button></div></Row>}</>}
