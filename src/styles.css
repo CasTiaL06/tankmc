@@ -228,3 +228,41 @@ h2.sec{display:flex}
 .mrow>*{min-width:0}.mrow .btn,.mrow .tg{flex:none}.mrow .chips{overflow:hidden;flex-wrap:nowrap}
 .skin{border-color:rgba(255,106,26,.4)}.skin .body{height:240px;width:auto;max-width:100%;object-fit:contain}
 @media (max-width:1180px){.rail2{display:none}}
+
+/* ===== Kaydırma çubukları: istemcinin turuncu-siyah diline uygun ===== */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(255,138,48,.55),rgba(255,106,26,.26));border-radius:99px;border:3px solid transparent;background-clip:padding-box;min-height:36px}
+::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#ff9a3c,#ff6a1a);background-clip:padding-box}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+::-webkit-scrollbar-corner{background:transparent}
+
+/* ===== Sayfa geçişi: yalnızca solma. Ölçek/kaydırma animasyonu, geçiş sürerken katmanın düşük çözünürlükte çizilip sonra düzelmesine (bulanıklık) yol açıyordu ===== */
+@keyframes in{from{opacity:0}to{opacity:1}}
+.view{animation:in .22s ease}
+
+/* ===== Pencere küçülünce yerleşim ===== */
+.app{min-width:0}
+.hero{container:hero / inline-size}
+.stats{top:20px;bottom:auto}
+@container hero (max-width: 780px){.stats{display:none}.hc h2{font-size:32px}.hc{left:24px}}
+.hc .row{flex-wrap:wrap}
+.qa{grid-template-columns:repeat(auto-fit,minmax(128px,1fr))}.qlast{grid-column:span 2;min-width:0}
+.mdl{max-width:92vw}.dr{max-width:100vw}
+.tiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+@media (max-width:1000px){
+  .app{grid-template-columns:72px minmax(0,1fr)}
+  aside{padding:14px 8px;align-items:center}
+  .brand{padding:0 0 14px}.brand div{display:none}
+  nav{width:100%}
+  nav button{font-size:0;justify-content:center;padding:0;gap:0}
+  nav button svg{width:20px;height:20px}
+  .bdg{position:absolute;top:3px;right:6px;margin:0;font-size:10px}
+  .profs h4,.sideart{display:none}.ptiles{justify-content:center}
+  .me{padding:8px;justify-content:center}.me>div:nth-child(2),.me .chv{display:none}
+}
+@media (max-width:900px){
+  .pl{grid-template-columns:1fr}
+  .lib{grid-template-columns:1fr}.rail{position:static;flex-direction:row;flex-wrap:wrap}
+  .dock .cube{display:none}.spot .in{width:80%;right:auto}
+}

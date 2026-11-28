@@ -33,7 +33,7 @@ let dlPending = false
 const dl = new Downloads(data.dir, () => { if (dlPending) return; dlPending = true; setTimeout(() => { dlPending = false; win?.webContents.send('downloads:update', dl.list()) }, 300) })
 function createWindow() {
   win = new BrowserWindow({
-    width: 1280, height: 800, minWidth: 960, minHeight: 620,
+    width: 1280, height: 800, minWidth: 820, minHeight: 560,
     backgroundColor: '#08080a', frame: false, title: 'TankClient',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
@@ -88,8 +88,10 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
 // Ayarlar: yalnızca doğrulanmış değerler diske yazılır. RAM üst sınırı = fiziksel bellek - 1 GB.
 const maxRam = () => Math.min(32768, Math.max(2048, (Math.floor(os.totalmem() / 2 ** 30) - 1) * 1024))
 ipcMain.handle('settings:get', () => ({ settings: settings.sanitize(settings.load(data.dir), maxRam()), maxRamMb: maxRam(), defaultGameDir: path.join(data.dir, 'minecraft') }))
+// Windows ile başlat: yalnızca kurulumlu sürümde (portable EXE her açılışta geçici klasöre açıldığı için yolu kalıcı değildir)
+const applyLogin = () => { try { if (app.isPackaged && data.mode === 'installed') app.setLoginItemSettings({ openAtLogin: settings.load(data.dir).startWithWindows }) } catch { /* ayar uygulanamadı */ } }
 const applyZoom = () => { try { win.webContents.setZoomFactor(settings.sanitize(settings.load(data.dir), maxRam()).uiScale / 100) } catch { /* pencere yok */ } }
-ipcMain.handle('settings:set', (_e, raw: unknown) => { const s = settings.sanitize(raw, maxRam()); settings.save(data.dir, s); applyZoom(); return s })
+ipcMain.handle('settings:set', (_e, raw: unknown) => { const s = settings.sanitize(raw, maxRam()); settings.save(data.dir, s); applyZoom(); applyLogin(); return s })
 ipcMain.handle('settings:pick', async (_e, kind: unknown) => {
   if (kind !== 'java' && kind !== 'folder') return null
   const r = await dialog.showOpenDialog(win, kind === 'java' ? { properties: ['openFile'], filters: [{ name: 'Java', extensions: ['exe'] }] } : { properties: ['openDirectory', 'createDirectory'] })
@@ -202,6 +204,7 @@ h('auth:skin', async () => ({ skin: await auth.getSkin() }))
 ipcMain.handle('app:open', (_e, u: unknown) => { if (typeof u === 'string' && /^https:\/\/(modrinth\.com|github\.com)\//.test(u)) void shell.openExternal(u) })
 app.whenReady().then(() => {
   if (data.migrationError) dialog.showErrorBox('TankClient', `Eski veriler (TANKmc) yeni klasöre kopyalanamadı. Eski klasörün yerinde duruyor, hiçbir veri silinmedi.\n\n${data.migrationError}`)
+  applyLogin()
   Menu.setApplicationMenu(null) // Alt tuşuyla açılan varsayılan menü çubuğu kaldırıldı
   createWindow()
   try { fs.rmSync(path.join(data.dir, 'updates'), { recursive: true, force: true }) } catch { /* yok say */ } // önceki güncelleme dosyaları

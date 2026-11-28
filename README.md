@@ -18,7 +18,7 @@ Modern, ücretsiz ve açık kaynak bir **Minecraft Java Edition** launcher'ı. E
 | Microsoft girişi | Client ID tanımlı; gerçek hesapla test edilmedi, Minecraft servisleri için Mojang uygulama onayı gerekir |
 | Vanilla başlatma (1.8.9+; resmî manifest, kütüphane/asset indirme, SHA1 doğrulama, Mojang Java) | Yazıldı; argüman mantığı test edildi, gerçek oyunla denenmedi |
 | Fabric ve Quilt başlatma (resmî meta API, modlar profil klasöründen yüklenir) | Yazıldı; birleştirme mantığı test edildi, gerçek oyunla denenmedi |
-| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült, otomatik güncelleme) | Kalıcı ve uygulanır; Windows ile başlat yok (kapalı gösterilir) |
+| Ayarlar (RAM, çözünürlük, tam ekran, Java, oyun klasörü, küçült, otomatik güncelleme) | Kalıcı ve uygulanır; Windows ile başlat yalnızca kurulumlu sürümde (portable'da kapalı gösterilir) |
 | Sunucular (ekle/düzenle/sil, favori, arama, detay, canlı durum, katıl) | Durum ve oyuncu sayısı sunucudan okunur; gerçek sunucuyla denenmedi |
 | Mod Kütüphanesi (Modrinth: arama, kategori, uyumluluk, bağımlılıklar, etkinleştir/devre dışı, güncelleme, .mrpack mod paketleri) | Kurulum mantığı sahte API ile test edildi; gerçek Modrinth ile denenmedi |
 | Görüş mesafesi (2–32 chunk, her başlatmada options.txt'ye yazılır) ve Uzak Görüş (LOD) için Distant Horizons'u tek tıkla kurma | Yazıldı; options.txt yazımı test edildi, oyunda ve LOD ile 32 chunk üstü denenmedi |
@@ -71,7 +71,7 @@ Eski klasör hiçbir koşulda silinmez veya taşınmaz. Kopya önce geçici klas
 Feather/Lunar/Badlion gibi istemcilerin ekstra özellikleri ve ayar sekmeleri (kapsam sonra belirlenecek).
 
 ## Otomatik güncelleme
-1. `electron/config.ts` içindeki `UPDATE_REPO` değerine herkese açık deponu yaz (`kullanici/depo`) veya `TANK_UPDATE_REPO` ortam değişkenini ver. Boşsa güncelleme kontrolü kapalıdır.
+1. Güncelleme deposu `electron/config.ts` içindeki `UPDATE_REPO` değeridir (şu an `CasTiaL06/tankmc`; herkese açık olmalı). Başka bir depo için değiştir veya `TANK_UPDATE_REPO` ortam değişkenini ver. Boşsa güncelleme kontrolü kapalıdır.
 2. Yeni sürüm için `v0.2.0` gibi bir etiket gönder; iş akışı `TankClient-Setup-0.2.0.exe`, `TankClient-Portable-0.2.0.exe` ve `TankClient-SHA256.txt` dosyalarını release'e ekler.
 3. Uygulama açılışta (Ayarlar → Launcher'dan kapatılabilir) ve elle kontrol eder; daha yüksek sürüm bulursa üstte bildirim çıkar. **Güncelle** indirmeyi başlatır (İndirmeler sayfasında izlenir), SHA-256 doğrulanır, **Yeniden başlat** ile kurulur: kurulumlu sürümde kurulum sihirbazı, portable sürümde yeni EXE (eskisinin yanına indirilir) açılır. Veri klasörün korunur.
 4. Doğrulama özeti olmayan (eski) sürümler otomatik kurulmaz; sürüm sayfası bağlantısı gösterilir. Beta (pre-release) sürümler ayarda açıksa dahil edilir.

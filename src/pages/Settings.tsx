@@ -54,7 +54,7 @@ export default function Settings({ upd }: { upd: Upd }) {
           <Row t="Beta sürümlerini dahil et" s="Önizleme (pre-release) sürümleri de önerilir"><Toggle on={s.betaUpdates} set={v => up({ betaUpdates: v })} /></Row>
           <Row t="Güncellemeler" s={upd.statusText}><button className="btn g" disabled={upd.state.phase === 'checking' || upd.state.phase === 'downloading' || !upd.state.repoSet} onClick={() => void upd.check()}>ŞİMDİ KONTROL ET</button></Row>
           <Row t="Oyun açılınca küçült" s="Oyun kapanınca launcher geri gelir"><Toggle on={s.minimizeOnLaunch} set={v => up({ minimizeOnLaunch: v })} /></Row>
-          <Row t="Windows ile başlat" s="Henüz desteklenmiyor"><Toggle on={false} /></Row></>}
+          <Row t="Windows ile başlat" s={upd.state.mode === 'portable' ? 'Taşınabilir (portable) sürümde desteklenmez; kurulumlu sürümde çalışır' : 'Bilgisayar açılınca TankClient kendiliğinden başlar'}>{upd.state.mode === 'portable' ? <Toggle on={false} /> : <Toggle on={s.startWithWindows} set={v => up({ startWithWindows: v })} />}</Row></>}
       </div>
     </section>
   )
