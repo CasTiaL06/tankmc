@@ -6,7 +6,7 @@ import { spawn, execFile } from 'child_process'
 import { buildArgs, joinArgs, ruleOk, safeJoin } from './launchargs'
 import * as auth from './auth'
 import type { Handle } from './downloads'
-import { readBody } from './fetchbytes'
+import { downloadFile } from './fetchfile'
 import { applyLoader } from './loaders'
 import { installLoader } from './forgeinstall'
 import type { Settings } from './settings'
@@ -22,13 +22,11 @@ export const busy = () => running
 const getJson = async (u: string): Promise<any> => { const r = await fetch(u); if (!r.ok) throw new Error(`İndirme hatası (${r.status}): ${u}`); return r.json() }
 const sha1 = (f: string) => crypto.createHash('sha1').update(fs.readFileSync(f)).digest('hex')
 async function get(url: string, dest: string, hash?: string, t?: Handle, size?: number) {
-  if (fs.existsSync(dest) && (!hash || sha1(dest) === hash)) { t?.cached(size ?? fs.statSync(dest).size); return }
-  const r = await fetch(url, { signal: t?.signal }); if (!r.ok) throw new Error(`İndirme hatası (${r.status}): ${url}`)
-  fs.mkdirSync(path.dirname(dest), { recursive: true })
-  const tmp = dest + '.part'; fs.writeFileSync(tmp, await readBody(r, n => t?.bytes(n)))
-  if (hash && sha1(tmp) !== hash) { fs.rmSync(tmp); throw new Error('Dosya doğrulaması başarısız (SHA1): ' + path.basename(dest)) }
-  fs.renameSync(tmp, dest); t?.fileDone()
+  const r = await downloadFile(url, dest, { hash, size, signal: t?.signal, onBytes: n => t?.bytes(n) })
+  if (r.cached) t?.cached(r.bytes); else t?.fileDone()
 }
+// Önerilen JVM ayarları (Mojang başlatıcısındakiyle aynı G1 ayarları): açılışta ve oyun sırasında takılmayı azaltır
+const jvmFlags = (ram: number) => ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseG1GC', '-XX:G1NewSizePercent=20', '-XX:G1ReservePercent=20', '-XX:MaxGCPauseMillis=50', ...(ram >= 4096 ? ['-XX:G1HeapRegionSize=32M'] : [])]
 async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<void>, tick: () => void) {
   let i = 0
   await Promise.all(Array.from({ length: n }, async () => { while (i < items.length) { const t = items[i++]; await fn(t); tick() } }))
@@ -59,7 +57,8 @@ async function ensureJava(component: string, step: (t: string, p: number) => voi
 export async function play(id: string, emit: Emit, cfg: Settings, join?: { host: string; port: number | null }, profileDir?: string, loader?: string, dl?: Handle, offline?: { name: string; uuid: string }) {
   running = true
   rootDir = cfg.gameDir || path.join(app.getPath('userData'), 'minecraft')
-  const step = (text: string, pct: number) => emit('game:progress', { text, pct })
+  let lastStep = 0 // "12/3400" gibi sayaçlı ilerleme en fazla ~8 kez/sn iletilir; binlerce olay arayüzü donduruyordu
+  const step = (text: string, pct: number) => { const n = Date.now(); if (n - lastStep < 120 && /\d+\/\d+/.test(text)) return; lastStep = n; emit('game:progress', { text, pct }) }
   try {
     emit('game:state', { state: 'preparing' })
     const ms = await auth.ensureSession() // çevrimdışı hesap için de sahiplik kanıtı olan bir Microsoft oturumu gerekir
@@ -125,7 +124,7 @@ export async function play(id: string, emit: Emit, cfg: Settings, join?: { host:
     dl?.finish() // indirme aşaması bitti
     const v = { auth_player_name: s.name, version_name: id, game_directory: profileDir ?? R, assets_root: path.join(R, 'assets'), assets_index_name: vj.assetIndex.id, auth_uuid: s.uuid, auth_access_token: s.mcToken, user_type: offline ? 'legacy' : 'msa', version_type: vj.type, natives_directory: nd, library_directory: path.join(R, 'libraries'), classpath_separator: ';', launcher_name: 'TankClient', launcher_version: app.getVersion(), classpath: [...cp, jar].join(';'), clientid: '', auth_xuid: '', user_properties: '{}', game_assets: path.join(R, 'assets', 'virtual', 'legacy') }
     const [w, h] = cfg.resolution.split('x')
-    const args = [`-Xmx${cfg.ramMb}M`, ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : []), ...(join ? joinArgs(vj, join.host, join.port) : [])]
+    const args = [`-Xms${Math.min(cfg.ramMb, 1024)}M`, `-Xmx${cfg.ramMb}M`, ...jvmFlags(cfg.ramMb), ...buildArgs(vj, v), '--width', w, '--height', h, ...(cfg.fullscreen ? ['--fullscreen'] : []), ...(join ? joinArgs(vj, join.host, join.port) : [])]
     step('Minecraft başlatılıyor…', 0.95)
     const logDir = path.join(app.getPath('userData'), 'logs'); fs.mkdirSync(logDir, { recursive: true })
     const log = fs.createWriteStream(path.join(logDir, `game-${Date.now()}.log`)) // erişim token'ı günlüğe yazılmaz

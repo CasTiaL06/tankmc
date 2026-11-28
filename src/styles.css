@@ -266,3 +266,12 @@ h2.sec{display:flex}
   .lib{grid-template-columns:1fr}.rail{position:static;flex-direction:row;flex-wrap:wrap}
   .dock .cube{display:none}.spot .in{width:80%;right:auto}
 }
+
+/* Kütüphane profil kartı: düğmeler kartın içine sığar (OYNA alt satırda tam genişlikte) */
+.pc .meta{flex-direction:column;align-items:stretch;gap:8px}
+.pc .meta>span{display:flex;gap:6px}.pc .meta>span .btn{flex:1;min-width:0}
+.pc .meta>.btn{width:100%;box-sizing:border-box;min-width:0}
+.hc select{max-width:300px;text-overflow:ellipsis}
+/* oyun açıkken arayüz animasyonları ve bulanıklık efektleri kapanır */
+body.gaming *,body.gaming *::before,body.gaming *::after{animation:none!important;transition:none!important}
+body.gaming .dock,body.gaming .top,body.gaming .stats,body.gaming .upd{backdrop-filter:none!important}

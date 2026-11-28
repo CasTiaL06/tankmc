@@ -1,5 +1,5 @@
 import { createHash } from 'crypto'
-import { readBody } from './fetchbytes'
+import { fetchBuffer } from './fetchbytes'
 
 // Modrinth ücretsiz genel API'si (v2). Her istekte tanımlayıcı User-Agent gönderilir.
 export const UA = 'TankClient/0.1.0 (open-source Minecraft launcher)'
@@ -19,11 +19,7 @@ export async function getJson(p: string, params: Record<string, string | number>
 }
 export async function getBytes(url: string, max = 300_000_000, opts: { signal?: AbortSignal; onBytes?: (n: number) => void } = {}): Promise<Buffer> {
   if (!isAllowedUrl(url)) throw new Error('İzin verilmeyen indirme adresi')
-  const timeout = AbortSignal.timeout(180000)
-  const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout })
-  if (!r.ok) throw new Error(`İndirme hatası (${r.status})`)
-  if (Number(r.headers.get('content-length') ?? 0) > max) throw new Error('Dosya çok büyük')
-  return readBody(r, opts.onBytes, max)
+  return fetchBuffer(url, { headers: { 'User-Agent': UA }, signal: opts.signal, onBytes: opts.onBytes, max, timeoutMs: 180000, label: decodeURIComponent(new URL(url).pathname.split('/').pop() ?? 'dosya') })
 }
 export function verifyHash(buf: Buffer, h?: { sha1?: string; sha512?: string }) {
   const ok = h?.sha512 ? createHash('sha512').update(buf).digest('hex') === h.sha512 : h?.sha1 ? createHash('sha1').update(buf).digest('hex') === h.sha1 : false

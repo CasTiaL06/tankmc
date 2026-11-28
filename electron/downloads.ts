@@ -56,7 +56,7 @@ export class Downloads {
     return {
       id: task.id, signal: ctl.signal, get cancelled() { return task.state === 'cancelled' },
       expect(b, f = 0) { if (live()) { task.total += Math.max(0, b); task.files += f; self.onChange() } },
-      bytes(n) { if (!live()) return; task.done += n; const s = self.samples.get(task.id)!, t = self.now(); s.push([t, n]); while (s.length && t - s[0][0] > WINDOW) s.shift(); self.onChange() },
+      bytes(n) { if (!live()) return; if (n < 0) { task.done = Math.max(0, task.done + n); self.onChange(); return } task.done += n; const s = self.samples.get(task.id)!, t = self.now(); s.push([t, n]); while (s.length && t - s[0][0] > WINDOW) s.shift(); self.onChange() },
       cached(n) { if (live()) { task.done += n; task.filesDone++; self.onChange() } },
       fileDone() { if (live()) { task.filesDone++; self.onChange() } },
       finish(title) {

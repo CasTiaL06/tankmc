@@ -21,6 +21,7 @@ import { useDownloads } from './lib/useDownloads'
 import { useAuth } from './lib/useAuth'
 import { useProfiles } from './lib/useProfiles'
 import { useGame } from './lib/useGame'
+import { useTarget } from './lib/useTarget'
 
 export default function App() {
   const [page, setPage] = useState<Page>('home'), [msg, setMsg] = useState(''), tm = useRef<number | undefined>(undefined)
@@ -28,7 +29,8 @@ export default function App() {
   const toast = (m: string) => { setMsg(m); clearTimeout(tm.current); tm.current = window.setTimeout(() => setMsg(''), Math.max(3200, m.length * 70)) }
   useEffect(() => () => clearTimeout(tm.current), [])
   const g = useGame(toast), auth = useAuth(toast), dl = useDownloads(), upd = useUpdate()
-  const p = useProfiles(), [newP, setNewP] = useState(false)
+  const p = useProfiles(), [newP, setNewP] = useState(false), t = useTarget(g, p)
+  useEffect(() => { document.body.classList.toggle('gaming', g.live) }, [g.live]) // oyun açıkken arayüz animasyonları durur (oyuna CPU/GPU kalsın)
   useEffect(() => { if (page !== 'packs') setSearch(undefined) }, [page]) // eski arama, Mod Kütüphanesi'ne sonradan girince geri gelmesin
   const idx = NAV.findIndex(n => n[0] === page)
   const us = upd.state
@@ -59,7 +61,7 @@ export default function App() {
         <div className="body">
           <main key={page}>
             <UpdateBanner upd={upd} />
-            {page === 'home' && <Home go={setPage} g={g} onNewProfile={() => setNewP(true)} />}
+            {page === 'home' && <Home go={setPage} g={g} t={t} p={p} onNewProfile={() => setNewP(true)} />}
             {page === 'library' && <Library toast={toast} g={g} p={p} go={setPage} />}
             {page === 'servers' && <Servers toast={toast} g={g} />}
             {page === 'packs' && <ModLibrary toast={toast} g={g} p={p} query={search} />}
@@ -69,7 +71,7 @@ export default function App() {
           </main>
           {(page === 'home' || page === 'packs') && <RightRail kind={page === 'home' ? 'home' : 'mods'} go={setPage} />}
         </div>
-        <Dock g={g} dl={dl} p={p} go={setPage} />
+        <Dock g={g} dl={dl} p={p} t={t} go={setPage} />
       </div>
       {newP && <NewProfile vers={g.vers} onCreate={createProfile} onClose={() => setNewP(false)} />}
       <div id="toast" className={msg ? 'on' : ''}>{msg}</div>

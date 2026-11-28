@@ -77,7 +77,8 @@ ipcMain.handle('game:play', (_e, id: unknown, address: unknown, profileId: unkno
   void game.play(version, (ch, p) => {
     win.webContents.send(ch, p)
     const st = ch === 'game:state' ? (p as { state: string }).state : ''
-    if (st === 'running') started = Date.now()
+    if (st === 'running') { started = Date.now(); try { os.setPriority(process.pid, os.constants.priority.PRIORITY_BELOW_NORMAL) } catch { /* izin yok */ } } // oyun CPU'yu daha rahat kullansın
+    if (st === 'exited' || st === 'error') { try { os.setPriority(process.pid, os.constants.priority.PRIORITY_NORMAL) } catch { /* yok say */ } }
     if ((st === 'exited' || st === 'error') && started) { stats.record(data.dir, { start: started, end: Date.now(), label, version }); started = 0 }
     if (st === 'running' && cfg.minimizeOnLaunch) win.minimize()
     if ((st === 'exited' || st === 'error') && win.isMinimized()) { win.restore(); win.focus() }
